@@ -5,6 +5,7 @@ import (
 
 	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/fx"
@@ -15,9 +16,10 @@ import (
 
 type Params struct {
 	fx.In
-	KTable          ktable.Table
-	DiscoveredNodes concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
-	Logger          *zap.SugaredLogger
+	KTable           ktable.Table
+	DiscoveredNodes  concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
+	DiscoveredHashes chan dht.DiscoveredHash                  `name:"dht_discovered_hashes"`
+	Logger           *zap.SugaredLogger
 }
 
 type Result struct {
@@ -46,14 +48,17 @@ func New(p Params) Result {
 	})
 
 	return Result{
-		Responder: responderNodeDiscovery{
-			responder: responderLogger{
-				responder: collector,
-				logger: p.Logger.WithOptions(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
-					return zapcore.NewSamplerWithOptions(core, time.Minute, 10, 0)
-				})).Named(subsystem),
+		Responder: responderHashDiscovery{
+			discoveredHashes: p.DiscoveredHashes,
+			responder: responderNodeDiscovery{
+				responder: responderLogger{
+					responder: collector,
+					logger: p.Logger.WithOptions(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+						return zapcore.NewSamplerWithOptions(core, time.Minute, 10, 0)
+					})).Named(subsystem),
+				},
+				discoveredNodes: p.DiscoveredNodes.In(),
 			},
-			discoveredNodes: p.DiscoveredNodes.In(),
 		},
 		QueryDuration:     collector.queryDuration,
 		QuerySuccessTotal: collector.querySuccessTotal,

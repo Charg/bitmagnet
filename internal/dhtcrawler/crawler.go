@@ -11,6 +11,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/concurrency"
 	"github.com/bitmagnet-io/bitmagnet/internal/database/dao"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/client"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo"
@@ -31,6 +32,7 @@ type crawler struct {
 	getOldestNodesInterval       time.Duration
 	oldPeerThreshold             time.Duration
 	discoveredNodes              concurrency.BatchingChannel[ktable.Node]
+	discoveredHashes             <-chan dht.DiscoveredHash
 	nodesForPing                 concurrency.BufferedConcurrentChannel[ktable.Node]
 	nodesForFindNode             concurrency.BufferedConcurrentChannel[ktable.Node]
 	nodesForSampleInfoHashes     concurrency.BufferedConcurrentChannel[ktable.Node]
@@ -57,7 +59,9 @@ type crawler struct {
 	soughtNodeID   *concurrency.AtomicValue[protocol.ID]
 	stopped        chan struct{}
 	persistedTotal *prometheus.CounterVec
-	logger         *zap.SugaredLogger
+	// passivelyDiscoveredTotal counts hashes observed in incoming queries, by query type.
+	passivelyDiscoveredTotal *prometheus.CounterVec
+	logger                   *zap.SugaredLogger
 }
 
 func (c *crawler) start() {
@@ -66,6 +70,7 @@ func (c *crawler) start() {
 	// start the various pipeline workers
 	go c.rotateSoughtNodeID(ctx)
 	go c.runDiscoveredNodes(ctx)
+	go c.runDiscoveredHashes(ctx)
 	go c.runPing(ctx)
 	go c.runFindNode(ctx)
 	go c.getNodesForFindNode(ctx)
@@ -85,6 +90,9 @@ func (c *crawler) start() {
 type nodeHasPeersForHash struct {
 	infoHash protocol.ID
 	node     netip.AddrPort
+	// peers is an optional hint of peers known to have the torrent (for example from an announce_peer query),
+	// allowing the get_peers round trip to be skipped.
+	peers []netip.AddrPort
 }
 
 type infoHashWithMetaInfo struct {

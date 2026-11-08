@@ -10,6 +10,7 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/database/search"
 	"github.com/bitmagnet-io/bitmagnet/internal/lazy"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/client"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo/banning"
@@ -32,6 +33,7 @@ type Params struct {
 	Dao               lazy.Lazy[*dao.Query]
 	BlockingManager   lazy.Lazy[blocking.Manager]
 	DiscoveredNodes   concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
+	DiscoveredHashes  chan dht.DiscoveredHash                  `name:"dht_discovered_hashes"`
 	Logger            *zap.SugaredLogger
 }
 
@@ -42,6 +44,8 @@ type Result struct {
 	DhtCrawlerActive *concurrency.AtomicValue[bool] `name:"dht_crawler_active"`
 
 	PersistedTotal prometheus.Collector `group:"prometheus_collectors"`
+
+	PassivelyDiscoveredTotal prometheus.Collector `group:"prometheus_collectors"`
 }
 
 func New(params Params) Result {
@@ -55,6 +59,13 @@ func New(params Params) Result {
 		Name:      "persisted_total",
 		Help:      "A counter of persisted database entities.",
 	}, []string{"entity"})
+
+	passivelyDiscoveredTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "bitmagnet",
+		Subsystem: "dht_crawler",
+		Name:      "passively_discovered_hashes_total",
+		Help:      "A counter of info hashes passively discovered from incoming DHT queries.",
+	}, []string{"source"})
 
 	return Result{
 		Worker: worker.NewWorker(
@@ -85,6 +96,7 @@ func New(params Params) Result {
 						getOldestNodesInterval:       time.Second * 10,
 						oldPeerThreshold:             time.Minute * 15,
 						discoveredNodes:              params.DiscoveredNodes,
+						discoveredHashes:             params.DiscoveredHashes,
 						nodesForPing: concurrency.NewBufferedConcurrentChannel[ktable.Node](
 							scalingFactor, scalingFactor),
 						nodesForFindNode: concurrency.NewBufferedConcurrentChannel[ktable.Node](
@@ -94,7 +106,7 @@ func New(params Params) Result {
 							10*scalingFactor,
 						),
 						infoHashTriage: concurrency.NewBatchingChannel[nodeHasPeersForHash](
-							10*scalingFactor, 1000, 20*time.Second),
+							10*scalingFactor, 1000, 2*time.Second),
 						getPeers: concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](
 							10*scalingFactor, 20*scalingFactor),
 						scrape: concurrency.NewBufferedConcurrentChannel[nodeHasPeersForHash](
@@ -120,12 +132,13 @@ func New(params Params) Result {
 						ignoreHashes: &ignoreHashes{
 							bloom: boom.NewStableBloomFilter(10_000_000, 2, 0.001),
 						},
-						seenNodes:       newSeenNodes(),
-						blockingManager: blockingManager,
-						soughtNodeID:    &concurrency.AtomicValue[protocol.ID]{},
-						stopped:         make(chan struct{}),
-						persistedTotal:  persistedTotal,
-						logger:          params.Logger.Named("dht_crawler"),
+						seenNodes:                newSeenNodes(),
+						blockingManager:          blockingManager,
+						soughtNodeID:             &concurrency.AtomicValue[protocol.ID]{},
+						stopped:                  make(chan struct{}),
+						persistedTotal:           persistedTotal,
+						passivelyDiscoveredTotal: passivelyDiscoveredTotal,
+						logger:                   params.Logger.Named("dht_crawler"),
 					}
 					c.soughtNodeID.Set(protocol.RandomNodeID())
 
@@ -143,7 +156,8 @@ func New(params Params) Result {
 				},
 			},
 		),
-		PersistedTotal:   persistedTotal,
-		DhtCrawlerActive: active,
+		PersistedTotal:           persistedTotal,
+		PassivelyDiscoveredTotal: passivelyDiscoveredTotal,
+		DhtCrawlerActive:         active,
 	}
 }

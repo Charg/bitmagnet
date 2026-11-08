@@ -86,12 +86,11 @@ func (c *crawler) runInfoHashTriage(ctx context.Context) {
 					t.FilesStatus == model.FilesStatusNoInfo ||
 					(t.FilesStatus != model.FilesStatusSingle && !t.FilesCount.Valid) ||
 					(t.FilesStatus == model.FilesStatusOverThreshold && t.FilesCount.Uint <= c.saveFilesThreshold) {
-					select {
-					case <-ctx.Done():
+					if !c.routeNeedsMetaInfo(ctx, r) {
 						return
-					case c.getPeers.In() <- r:
-						continue
 					}
+
+					continue
 				} else if (!t.Seeders.Valid || !t.Leechers.Valid) ||
 					t.UpdatedAt.Before(time.Now().Add(-c.rescrapeThreshold)) {
 					select {
@@ -113,4 +112,24 @@ type triageResult struct {
 	Seeders     model.NullUint
 	Leechers    model.NullUint
 	UpdatedAt   time.Time
+}
+
+// routeNeedsMetaInfo forwards a request for a hash that needs its meta info fetched. If the request carries a
+// hint of known peers then the get_peers round trip is skipped. It returns false if the context was cancelled.
+func (c *crawler) routeNeedsMetaInfo(ctx context.Context, r nodeHasPeersForHash) bool {
+	if len(r.peers) > 0 {
+		select {
+		case <-ctx.Done():
+			return false
+		case c.requestMetaInfo.In() <- infoHashWithPeers{nodeHasPeersForHash: r, peers: r.peers}:
+			return true
+		}
+	}
+
+	select {
+	case <-ctx.Done():
+		return false
+	case c.getPeers.In() <- r:
+		return true
+	}
 }
