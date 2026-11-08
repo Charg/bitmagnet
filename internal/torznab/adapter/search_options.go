@@ -150,41 +150,9 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 		options = append(options, query.Where(query.Or(catsCriteria...)))
 	}
 
-	if r.IMDBID.Valid {
-		imdbID := r.IMDBID.String
-		if !strings.HasPrefix(imdbID, "tt") {
-			imdbID = "tt" + imdbID
-		}
-
-		var ct model.ContentType
-		if r.Type != torznab.FunctionTV {
-			ct = model.ContentTypeMovie
-		} else if r.Type != torznab.FunctionMovie {
-			ct = model.ContentTypeTvShow
-		}
-
-		options = append(options, query.Where(search.ContentAlternativeIdentifierCriteria(model.ContentRef{
-			Type:   ct,
-			Source: "imdb",
-			ID:     imdbID,
-		})))
-	}
-
-	if r.TMDBID.Valid {
-		tmdbID := r.TMDBID.String
-
-		var ct model.ContentType
-		if r.Type != torznab.FunctionTV {
-			ct = model.ContentTypeMovie
-		} else if r.Type != torznab.FunctionMovie {
-			ct = model.ContentTypeTvShow
-		}
-
-		options = append(options, query.Where(search.ContentCanonicalIdentifierCriteria(model.ContentRef{
-			Type:   ct,
-			Source: "tmdb",
-			ID:     tmdbID,
-		})))
+	if idCriteria := idCriteria(r); len(idCriteria) > 0 {
+		// any supplied ID matching is sufficient, as not all content has every type of ID
+		options = append(options, query.Where(query.Or(idCriteria...)))
 	}
 
 	limit := r.Profile.DefaultLimit
@@ -205,4 +173,38 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 	}
 
 	return options, nil
+}
+
+func idCriteria(r torznab.SearchRequest) []query.Criteria {
+	var criteria []query.Criteria
+
+	var ct model.ContentType
+	if r.Type != torznab.FunctionTV {
+		ct = model.ContentTypeMovie
+	} else if r.Type != torznab.FunctionMovie {
+		ct = model.ContentTypeTvShow
+	}
+
+	if r.IMDBID.Valid {
+		imdbID := r.IMDBID.String
+		if !strings.HasPrefix(imdbID, "tt") {
+			imdbID = "tt" + imdbID
+		}
+
+		criteria = append(criteria, search.ContentAlternativeIdentifierCriteria(model.ContentRef{
+			Type:   ct,
+			Source: "imdb",
+			ID:     imdbID,
+		}))
+	}
+
+	if r.TMDBID.Valid {
+		criteria = append(criteria, search.ContentCanonicalIdentifierCriteria(model.ContentRef{
+			Type:   ct,
+			Source: "tmdb",
+			ID:     r.TMDBID.String,
+		}))
+	}
+
+	return criteria
 }
