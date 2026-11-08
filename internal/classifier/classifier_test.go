@@ -183,6 +183,334 @@ func TestClassifier(t *testing.T) {
 		},
 		{
 			torrent: model.Torrent{
+				Name:        "Frieren Beyond Journeys End S01E10 1080p.mkv",
+				FilesStatus: model.FilesStatusSingle,
+				Extension:   model.NewNullString("mkv"),
+				Size:        1000000000,
+			},
+			prepareMocks: func(mocks testClassifierMocks) {
+				mocks.search.On(
+					"ContentBySearch",
+					matchContext,
+					model.ContentTypeTvShow,
+					"Frieren Beyond Journeys End",
+					model.Year(0),
+				).
+					Return(model.Content{}, classification.ErrUnmatched)
+				mocks.tmdbClient.On(
+					"SearchTv",
+					matchContext,
+					tmdb.SearchTvRequest{
+						Query:        "Frieren Beyond Journeys End",
+						IncludeAdult: true,
+					},
+				).
+					Return(tmdb.SearchTvResponse{
+						Results: []tmdb.SearchTvResult{frierenSearchResult},
+					}, nil)
+				// the primary match succeeds, so alternative titles must not be requested:
+				mocks.tmdbClient.On(
+					"TvDetails",
+					matchContext,
+					tmdb.TvDetailsRequest{
+						SeriesID:         209867,
+						AppendToResponse: []string{"external_ids"},
+					},
+				).
+					Return(frierenDetails, nil)
+			},
+			expected: classification.Result{
+				ContentAttributes: classification.ContentAttributes{
+					ContentType:     model.NewNullContentType(model.ContentTypeTvShow),
+					BaseTitle:       model.NewNullString("Frieren Beyond Journeys End"),
+					Episodes:        model.Episodes{1: {10: {}}},
+					VideoResolution: model.NewNullVideoResolution(model.VideoResolutionV1080p),
+				},
+				Content: &frierenContent,
+			},
+		},
+		{
+			torrent: model.Torrent{
+				Name:        "Sousou no Frieren S01E05 1080p.mkv",
+				FilesStatus: model.FilesStatusSingle,
+				Extension:   model.NewNullString("mkv"),
+				Size:        1000000000,
+			},
+			prepareMocks: func(mocks testClassifierMocks) {
+				mocks.search.On(
+					"ContentBySearch",
+					matchContext,
+					model.ContentTypeTvShow,
+					"Sousou no Frieren",
+					model.Year(0),
+				).
+					Return(model.Content{}, classification.ErrUnmatched)
+				mocks.tmdbClient.On(
+					"SearchTv",
+					matchContext,
+					tmdb.SearchTvRequest{
+						Query:        "Sousou no Frieren",
+						IncludeAdult: true,
+					},
+				).
+					Return(tmdb.SearchTvResponse{
+						Results: []tmdb.SearchTvResult{frierenSearchResult},
+					}, nil)
+				mocks.tmdbClient.On(
+					"TvDetails",
+					matchContext,
+					tmdb.TvDetailsRequest{
+						SeriesID:         209867,
+						AppendToResponse: []string{"external_ids", "alternative_titles"},
+					},
+				).
+					Return(frierenDetailsWithAlternativeTitles, nil)
+			},
+			expected: classification.Result{
+				ContentAttributes: classification.ContentAttributes{
+					ContentType:     model.NewNullContentType(model.ContentTypeTvShow),
+					BaseTitle:       model.NewNullString("Sousou no Frieren"),
+					Episodes:        model.Episodes{1: {5: {}}},
+					VideoResolution: model.NewNullVideoResolution(model.VideoResolutionV1080p),
+				},
+				Content: &frierenContent,
+			},
+		},
+		{
+			torrent: model.Torrent{
+				Name:        "Boku no Hero Academia S07E01 1080p.mkv",
+				FilesStatus: model.FilesStatusSingle,
+				Extension:   model.NewNullString("mkv"),
+				Size:        1000000000,
+			},
+			prepareMocks: func(mocks testClassifierMocks) {
+				mocks.search.On(
+					"ContentBySearch",
+					matchContext,
+					model.ContentTypeTvShow,
+					"Boku no Hero Academia",
+					model.Year(0),
+				).
+					Return(model.Content{}, classification.ErrUnmatched)
+				mocks.tmdbClient.On(
+					"SearchTv",
+					matchContext,
+					tmdb.SearchTvRequest{
+						Query:        "Boku no Hero Academia",
+						IncludeAdult: true,
+					},
+				).
+					Return(tmdb.SearchTvResponse{
+						Results: []tmdb.SearchTvResult{
+							{ID: 1, Name: "Vigilantes", OriginalName: "ヴィジランテ"},
+							{ID: 65930, Name: "My Hero Academia", OriginalName: "僕のヒーローアカデミア"},
+						},
+					}, nil)
+				mocks.tmdbClient.On(
+					"TvDetails",
+					matchContext,
+					tmdb.TvDetailsRequest{
+						SeriesID:         1,
+						AppendToResponse: []string{"external_ids", "alternative_titles"},
+					},
+				).
+					Return(tmdb.TvDetailsResponse{
+						ID:           1,
+						Name:         "Vigilantes",
+						OriginalName: "ヴィジランテ",
+						AlternativeTitles: tmdb.TvAlternativeTitles{
+							Results: []tmdb.AlternativeTitle{{Iso3166_1: "JP", Title: "Vigilante: Boku no Hero Academia Illegals"}},
+						},
+					}, nil)
+				mocks.tmdbClient.On(
+					"TvDetails",
+					matchContext,
+					tmdb.TvDetailsRequest{
+						SeriesID:         65930,
+						AppendToResponse: []string{"external_ids", "alternative_titles"},
+					},
+				).
+					Return(tmdb.TvDetailsResponse{
+						ID:           65930,
+						Name:         "My Hero Academia",
+						OriginalName: "僕のヒーローアカデミア",
+						AlternativeTitles: tmdb.TvAlternativeTitles{
+							Results: []tmdb.AlternativeTitle{{Iso3166_1: "JP", Title: "Boku no Hero Academia"}},
+						},
+					}, nil)
+			},
+			expected: classification.Result{
+				ContentAttributes: classification.ContentAttributes{
+					ContentType:     model.NewNullContentType(model.ContentTypeTvShow),
+					BaseTitle:       model.NewNullString("Boku no Hero Academia"),
+					Episodes:        model.Episodes{7: {1: {}}},
+					VideoResolution: model.NewNullVideoResolution(model.VideoResolutionV1080p),
+				},
+				Content: &model.Content{
+					Type:          model.ContentTypeTvShow,
+					Source:        "tmdb",
+					ID:            "65930",
+					Title:         "My Hero Academia",
+					OriginalTitle: model.NewNullString("僕のヒーローアカデミア"),
+					Popularity:    model.NewNullFloat32(0),
+					VoteAverage:   model.NewNullFloat32(0),
+					VoteCount:     model.NewNullUint(0),
+					Collections:   []model.ContentCollection{},
+				},
+			},
+		},
+		{
+			torrent: model.Torrent{
+				Name:        "Shin no Nakama S01E01 1080p.mkv",
+				FilesStatus: model.FilesStatusSingle,
+				Extension:   model.NewNullString("mkv"),
+				Size:        1000000000,
+			},
+			prepareMocks: func(mocks testClassifierMocks) {
+				mocks.search.On(
+					"ContentBySearch",
+					matchContext,
+					model.ContentTypeTvShow,
+					"Shin no Nakama",
+					model.Year(0),
+				).
+					Return(model.Content{}, classification.ErrUnmatched)
+				mocks.tmdbClient.On(
+					"SearchTv",
+					matchContext,
+					tmdb.SearchTvRequest{
+						Query:        "Shin no Nakama",
+						IncludeAdult: true,
+					},
+				).
+					Return(tmdb.SearchTvResponse{
+						Results: []tmdb.SearchTvResult{
+							{ID: 1, Name: "Unrelated One"},
+							{ID: 2, Name: "Unrelated Two"},
+							{ID: 3, Name: "Unrelated Three"},
+							{ID: 4, Name: "Unrelated Four"},
+						},
+					}, nil)
+				// only the top 3 results are checked for alternative titles, and a missing result is skipped:
+				for _, id := range []int64{1, 3} {
+					mocks.tmdbClient.On(
+						"TvDetails",
+						matchContext,
+						tmdb.TvDetailsRequest{
+							SeriesID:         id,
+							AppendToResponse: []string{"external_ids", "alternative_titles"},
+						},
+					).
+						Return(tmdb.TvDetailsResponse{
+							ID:   id,
+							Name: "Unrelated",
+							AlternativeTitles: tmdb.TvAlternativeTitles{
+								Results: []tmdb.AlternativeTitle{{Title: "Something Else Entirely"}},
+							},
+						}, nil)
+				}
+				mocks.tmdbClient.On(
+					"TvDetails",
+					matchContext,
+					tmdb.TvDetailsRequest{
+						SeriesID:         2,
+						AppendToResponse: []string{"external_ids", "alternative_titles"},
+					},
+				).
+					Return(tmdb.TvDetailsResponse{}, tmdb.ErrNotFound)
+			},
+			expected: classification.Result{
+				ContentAttributes: classification.ContentAttributes{
+					ContentType:     model.NewNullContentType(model.ContentTypeTvShow),
+					BaseTitle:       model.NewNullString("Shin no Nakama"),
+					Episodes:        model.Episodes{1: {1: {}}},
+					VideoResolution: model.NewNullVideoResolution(model.VideoResolutionV1080p),
+				},
+			},
+		},
+		{
+			torrent: model.Torrent{
+				Name:        "Strazhi galaktiki (2014).mkv",
+				FilesStatus: model.FilesStatusSingle,
+				Extension:   model.NewNullString("mkv"),
+				Size:        1000000000,
+			},
+			prepareMocks: func(mocks testClassifierMocks) {
+				mocks.search.On(
+					"ContentBySearch",
+					matchContext,
+					model.ContentTypeMovie,
+					"Strazhi galaktiki",
+					model.Year(2014),
+				).
+					Return(model.Content{}, classification.ErrUnmatched)
+				mocks.tmdbClient.On(
+					"SearchMovie",
+					matchContext,
+					tmdb.SearchMovieRequest{
+						Query:        "Strazhi galaktiki",
+						Year:         2014,
+						IncludeAdult: true,
+					},
+				).
+					Return(tmdb.SearchMovieResponse{
+						Results: []tmdb.SearchMovieResult{
+							{
+								ID:            118340,
+								Title:         "Guardians of the Galaxy",
+								OriginalTitle: "Guardians of the Galaxy",
+								ReleaseDate:   "2014-07-30",
+							},
+						},
+					}, nil)
+				mocks.tmdbClient.On(
+					"MovieDetails",
+					matchContext,
+					tmdb.MovieDetailsRequest{
+						ID:               118340,
+						AppendToResponse: []string{"alternative_titles"},
+					},
+				).
+					Return(tmdb.MovieDetailsResponse{
+						ID:            118340,
+						Title:         "Guardians of the Galaxy",
+						OriginalTitle: "Guardians of the Galaxy",
+						ReleaseDate:   "2014-07-30",
+						AlternativeTitles: tmdb.MovieAlternativeTitles{
+							// matched after transliteration of the Cyrillic title:
+							Titles: []tmdb.AlternativeTitle{{Iso3166_1: "RU", Title: "Стражи Галактики"}},
+						},
+					}, nil)
+			},
+			expected: classification.Result{
+				ContentAttributes: classification.ContentAttributes{
+					ContentType: model.NewNullContentType(model.ContentTypeMovie),
+					BaseTitle:   model.NewNullString("Strazhi galaktiki"),
+					Date: model.Date{
+						Year: 2014,
+					},
+				},
+				Content: &model.Content{
+					Type:   model.ContentTypeMovie,
+					Source: "tmdb",
+					ID:     "118340",
+					Title:  "Guardians of the Galaxy",
+					ReleaseDate: model.Date{
+						Year:  2014,
+						Month: 7,
+						Day:   30,
+					},
+					ReleaseYear:   2014,
+					Adult:         model.NewNullBool(false),
+					OriginalTitle: model.NewNullString("Guardians of the Galaxy"),
+					Popularity:    model.NewNullFloat32(0),
+					VoteAverage:   model.NewNullFloat32(0),
+					VoteCount:     model.NewNullUint(0),
+				},
+			},
+		},
+		{
+			torrent: model.Torrent{
 				Name:        "The XXX Movie 1080p.mkv",
 				FilesStatus: model.FilesStatusSingle,
 				Extension:   model.NewNullString("mkv"),
@@ -228,6 +556,48 @@ func TestClassifier(t *testing.T) {
 		})
 	}
 }
+
+var (
+	frierenSearchResult = tmdb.SearchTvResult{
+		ID:           209867,
+		Name:         "Frieren: Beyond Journey's End",
+		OriginalName: "葬送のフリーレン",
+	}
+	frierenDetails = tmdb.TvDetailsResponse{
+		ID:           209867,
+		Name:         "Frieren: Beyond Journey's End",
+		OriginalName: "葬送のフリーレン",
+		FirstAirDate: "2023-09-29",
+	}
+	frierenDetailsWithAlternativeTitles = func() tmdb.TvDetailsResponse {
+		d := frierenDetails
+		d.AlternativeTitles = tmdb.TvAlternativeTitles{
+			Results: []tmdb.AlternativeTitle{
+				{Iso3166_1: "US", Title: "Frieren"},
+				{Iso3166_1: "JP", Title: "Sousou no Frieren"},
+			},
+		}
+
+		return d
+	}()
+	frierenContent = model.Content{
+		Type:   model.ContentTypeTvShow,
+		Source: "tmdb",
+		ID:     "209867",
+		Title:  "Frieren: Beyond Journey's End",
+		ReleaseDate: model.Date{
+			Year:  2023,
+			Month: 9,
+			Day:   29,
+		},
+		ReleaseYear:   2023,
+		OriginalTitle: model.NewNullString("葬送のフリーレン"),
+		Popularity:    model.NewNullFloat32(0),
+		VoteAverage:   model.NewNullFloat32(0),
+		VoteCount:     model.NewNullUint(0),
+		Collections:   []model.ContentCollection{},
+	}
+)
 
 type testClassifierMocks struct {
 	compiler   Compiler

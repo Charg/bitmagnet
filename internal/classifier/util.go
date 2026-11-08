@@ -1,6 +1,9 @@
 package classifier
 
 import (
+	"strings"
+	"unicode"
+
 	"github.com/agnivade/levenshtein"
 	"github.com/bitmagnet-io/bitmagnet/internal/regex"
 	"github.com/mozillazg/go-unidecode"
@@ -33,6 +36,11 @@ func levenshteinFindBestMatch[T any](target string, items []T, getCandidates fun
 	return items[bestMatch], true
 }
 
+func levenshteinIsMatch(target string, candidates []string) bool {
+	distance := levenshteinFindMinDistance(target, candidates)
+	return distance >= 0 && distance <= levenshteinThreshold
+}
+
 func levenshteinFindMinDistance(target string, candidates []string) int {
 	normTarget := levenshteinNormalizeString(target)
 	triedCandidates := make(map[string]struct{}, len(candidates))
@@ -55,6 +63,19 @@ func levenshteinFindMinDistance(target string, candidates []string) int {
 	return minDistance
 }
 
+// levenshteinNormalizeString transliterates and lowercases the string, removes apostrophes and replaces other
+// punctuation with spaces, so that e.g. "Journey's" matches "Journeys" and "Iruma-kun" matches "Iruma kun".
 func levenshteinNormalizeString(str string) string {
-	return regex.NormalizeString(unidecode.Unidecode(str))
+	str = strings.Map(func(r rune) rune {
+		switch {
+		case r == '\'':
+			return -1
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			return r
+		default:
+			return ' '
+		}
+	}, regex.NormalizeString(unidecode.Unidecode(str)))
+
+	return strings.Join(strings.Fields(str), " ")
 }
