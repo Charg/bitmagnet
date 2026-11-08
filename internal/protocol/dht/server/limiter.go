@@ -10,7 +10,7 @@ import (
 
 type queryLimiter struct {
 	server       Server
-	queryLimiter concurrency.KeyedLimiter
+	queryLimiter concurrency.KeyedLimiter[netip.Addr]
 }
 
 func (s queryLimiter) start() error {
@@ -27,7 +27,7 @@ func (s queryLimiter) Query(
 	q string,
 	args dht.MsgArgs,
 ) (r dht.RecvMsg, err error) {
-	if limitErr := s.queryLimiter.Wait(ctx, addr.Addr().String()); limitErr != nil {
+	if limitErr := s.queryLimiter.Wait(ctx, addr.Addr()); limitErr != nil {
 		return r, limitErr
 	}
 

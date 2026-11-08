@@ -10,11 +10,11 @@ import (
 
 type requestLimiter struct {
 	requester Requester
-	limiter   concurrency.KeyedLimiter
+	limiter   concurrency.KeyedLimiter[netip.Addr]
 }
 
 func (r requestLimiter) Request(ctx context.Context, infoHash protocol.ID, node netip.AddrPort) (Response, error) {
-	if limitErr := r.limiter.Wait(ctx, node.Addr().String()); limitErr != nil {
+	if limitErr := r.limiter.Wait(ctx, node.Addr()); limitErr != nil {
 		return Response{}, limitErr
 	}
 

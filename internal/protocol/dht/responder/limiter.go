@@ -29,7 +29,7 @@ type Limiter interface {
 }
 
 type limiter struct {
-	keyedLimiter concurrency.KeyedLimiter
+	keyedLimiter concurrency.KeyedLimiter[netip.Addr]
 	limiter      *rate.Limiter
 }
 
@@ -43,10 +43,10 @@ func NewLimiter(
 ) Limiter {
 	return &limiter{
 		limiter:      rate.NewLimiter(overallRate, overallBurst),
-		keyedLimiter: concurrency.NewKeyedLimiter(perIPRate, perIPBurst, perIPSize, perIPTTL),
+		keyedLimiter: concurrency.NewKeyedLimiter[netip.Addr](perIPRate, perIPBurst, perIPSize, perIPTTL),
 	}
 }
 
 func (l *limiter) Allow(addr netip.Addr) bool {
-	return l.keyedLimiter.Allow(addr.String()) && l.limiter.Allow()
+	return l.keyedLimiter.Allow(addr) && l.limiter.Allow()
 }
