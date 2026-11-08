@@ -8,7 +8,9 @@ type Profile struct {
 	DisableOrderByRelevance bool
 	DefaultLimit            uint
 	MaxLimit                uint
-	Tags                    []string
+	// MinSeeders excludes torrents with a known number of seeders below this value; 0 disables the filter
+	MinSeeders uint
+	Tags       []string
 }
 
 var ProfileDefault = Profile{
@@ -54,6 +56,7 @@ func (p Profile) Caps() Caps {
 					ParamQuery,
 					ParamIMDBID,
 					ParamTMDBID,
+					ParamTVDBID,
 				}, ","),
 			},
 			TvSearch: CapsSearch{
@@ -62,6 +65,7 @@ func (p Profile) Caps() Caps {
 					ParamQuery,
 					ParamIMDBID,
 					ParamTMDBID,
+					ParamTVDBID,
 					ParamSeason,
 					ParamEpisode,
 				}, ","),

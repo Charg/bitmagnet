@@ -54,6 +54,14 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 		options = append(options,
 			query.SearchString(r.Query),
 			query.OrderBy(order.Clauses(search.OrderDirectionDescending)...))
+	} else if r.IMDBID.Valid || r.TMDBID.Valid || r.TVDBID.Valid {
+		// an ID search can have many matches, so put the best seeded first so they fall within the first page;
+		// other searches without a query (e.g. RSS) keep the default newest-first order, which is also cheaper to sort
+		options = append(options, query.OrderBy(seedersOrder()...))
+	}
+
+	if r.Profile.MinSeeders > 0 {
+		options = append(options, query.Where(search.TorrentContentMinSeedersCriteria(r.Profile.MinSeeders)))
 	}
 
 	var catsCriteria []query.Criteria
@@ -121,6 +129,8 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 					catCriteria,
 					search.VideoResolutionCriteria(model.VideoResolutionV2160p),
 				)
+			case torznab.CategoryTVAnime.ID:
+				catCriteria = append(catCriteria, animeCriteria())
 			}
 		case torznab.CategoryXXX.Has(cat):
 			catCriteria = append(catCriteria, search.TorrentContentTypeCriteria(model.ContentTypeXxx))
@@ -150,41 +160,9 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 		options = append(options, query.Where(query.Or(catsCriteria...)))
 	}
 
-	if r.IMDBID.Valid {
-		imdbID := r.IMDBID.String
-		if !strings.HasPrefix(imdbID, "tt") {
-			imdbID = "tt" + imdbID
-		}
-
-		var ct model.ContentType
-		if r.Type != torznab.FunctionTV {
-			ct = model.ContentTypeMovie
-		} else if r.Type != torznab.FunctionMovie {
-			ct = model.ContentTypeTvShow
-		}
-
-		options = append(options, query.Where(search.ContentAlternativeIdentifierCriteria(model.ContentRef{
-			Type:   ct,
-			Source: "imdb",
-			ID:     imdbID,
-		})))
-	}
-
-	if r.TMDBID.Valid {
-		tmdbID := r.TMDBID.String
-
-		var ct model.ContentType
-		if r.Type != torznab.FunctionTV {
-			ct = model.ContentTypeMovie
-		} else if r.Type != torznab.FunctionMovie {
-			ct = model.ContentTypeTvShow
-		}
-
-		options = append(options, query.Where(search.ContentCanonicalIdentifierCriteria(model.ContentRef{
-			Type:   ct,
-			Source: "tmdb",
-			ID:     tmdbID,
-		})))
+	if idCriteria := idCriteria(r); len(idCriteria) > 0 {
+		// any supplied ID matching is sufficient, as not all content has every type of ID
+		options = append(options, query.Where(query.Or(idCriteria...)))
 	}
 
 	limit := r.Profile.DefaultLimit
@@ -205,4 +183,57 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 	}
 
 	return options, nil
+}
+
+func idCriteria(r torznab.SearchRequest) []query.Criteria {
+	var criteria []query.Criteria
+
+	// the content type is unrestricted for a generic search
+	var ct model.ContentType
+
+	switch r.Type {
+	case torznab.FunctionMovie:
+		ct = model.ContentTypeMovie
+	case torznab.FunctionTV:
+		ct = model.ContentTypeTvShow
+	}
+
+	if r.IMDBID.Valid {
+		imdbID := r.IMDBID.String
+		if !strings.HasPrefix(imdbID, "tt") {
+			imdbID = "tt" + imdbID
+		}
+
+		criteria = append(criteria, search.ContentAlternativeIdentifierCriteria(model.ContentRef{
+			Type:   ct,
+			Source: "imdb",
+			ID:     imdbID,
+		}))
+	}
+
+	if r.TMDBID.Valid {
+		criteria = append(criteria, search.ContentCanonicalIdentifierCriteria(model.ContentRef{
+			Type:   ct,
+			Source: "tmdb",
+			ID:     r.TMDBID.String,
+		}))
+	}
+
+	if r.TVDBID.Valid {
+		criteria = append(criteria, search.ContentAlternativeIdentifierCriteria(model.ContentRef{
+			Type:   ct,
+			Source: "tvdb",
+			ID:     r.TVDBID.String,
+		}))
+	}
+
+	return criteria
+}
+
+func seedersOrder() []query.OrderByColumn {
+	// skip the info hash tie-breaker of the seeders order so that published_at applies
+	return append(
+		search.TorrentContentOrderBySeeders.Clauses(search.OrderDirectionDescending)[:1],
+		search.TorrentContentOrderByPublishedAt.Clauses(search.OrderDirectionDescending)...,
+	)
 }

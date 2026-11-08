@@ -64,6 +64,12 @@ func (h handler) handleSearch(ctx *gin.Context, profile torznab.Profile, tp stri
 		tmdbID.String = qTMDBID
 	}
 
+	tvdbID := model.NullString{}
+	if qTVDBID := ctx.Query(torznab.ParamTVDBID); qTVDBID != "" {
+		tvdbID.Valid = true
+		tvdbID.String = qTVDBID
+	}
+
 	season := model.NullInt{}
 	episode := model.NullInt{}
 
@@ -100,6 +106,7 @@ func (h handler) handleSearch(ctx *gin.Context, profile torznab.Profile, tp stri
 		Cats:    cats,
 		IMDBID:  imdbID,
 		TMDBID:  tmdbID,
+		TVDBID:  tvdbID,
 		Season:  season,
 		Episode: episode,
 		Limit:   limit,
