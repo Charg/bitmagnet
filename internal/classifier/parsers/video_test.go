@@ -166,6 +166,44 @@ func TestParseVideoContent(t *testing.T) {
 			title:       "Jibaku Shounen Hanako-kun",
 			episodes:    model.Episodes{2: {3: {}}},
 		},
+		// absolute-numbered anime: no season can be inferred
+		{
+			input:       "[SubsPlease] Sousou no Frieren - 12 (1080p) [ABCD1234].mkv",
+			contentType: tvShow,
+			title:       "Sousou no Frieren",
+		},
+		{
+			input:       "[Erai-raws] One Piece - 1100 [1080p][Multiple Subtitle]",
+			contentType: tvShow,
+			title:       "One Piece",
+		},
+		{
+			input:       "[ASW] Dandadan - 05 [1080p HEVC x265 10Bit][AAC]",
+			contentType: tvShow,
+			title:       "Dandadan",
+		},
+		{
+			input:       "[SubsPlease] Urusei Yatsura (2022) - 26 (720p) [23A09EA9].mkv",
+			contentType: tvShow,
+			title:       "Urusei Yatsura",
+			year:        2022,
+		},
+		{
+			input:       "[SubsPlease] Sousou no Frieren - 12v2 (1080p) [ABCD1234].mkv",
+			contentType: tvShow,
+			title:       "Sousou no Frieren",
+		},
+		{
+			input:       "[HorribleSubs] Boruto - 05.mkv",
+			contentType: tvShow,
+			title:       "Boruto",
+		},
+		{
+			input:       "[9volt] Sousou no Frieren - 34 (S02E06) (WEB 1080p HEVC EAC-3) [0B5F5A7B].mkv",
+			contentType: tvShow,
+			title:       "Sousou no Frieren",
+			episodes:    model.Episodes{2: {6: {}}},
+		},
 		// dotted "Season.N"
 		{
 			input:       "The.Bear.Season.3.1080p.HULU.WEB-DL.DDP5.1.H.264-GROUP",
@@ -198,6 +236,31 @@ func TestParseVideoContent(t *testing.T) {
 			assert.Equal(t, test.title, attrs.BaseTitle.String, "title")
 			assert.Equal(t, test.year, attrs.Date.Year, "year")
 			assert.Equal(t, test.episodes, attrs.Episodes, "episodes")
+		})
+	}
+}
+
+func TestParseVideoContentNoAnimeMisfire(t *testing.T) {
+	t.Parallel()
+
+	tests := []string{
+		"Artist - Album (2020) [FLAC]",
+		"[Kamigami] The World Heritage - 2023-04-09 [1080p]",
+		"Some Software - 2024 Edition",
+		"[Group] Live Concert - 2023 [1080p]",
+		"[Group] Some Movie - 1080p [x264]",
+	}
+
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+
+			attrs, err := ParseVideoContent(model.Torrent{Name: input}, classification.Result{})
+			if err != nil {
+				return
+			}
+
+			assert.NotEqual(t, model.NewNullContentType(model.ContentTypeTvShow), attrs.ContentType)
 		})
 	}
 }

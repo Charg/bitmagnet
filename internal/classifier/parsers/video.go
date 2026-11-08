@@ -206,7 +206,26 @@ func ParseTitleYearEpisodes(
 }
 
 func ParseVideoContent(torrent model.Torrent, result classification.Result) (classification.ContentAttributes, error) {
-	title, year, episodes, rest, err := ParseTitleYearEpisodes(result.ContentType, stripReleaseNameBanner(torrent.Name))
+	name := stripReleaseNameBanner(torrent.Name)
+
+	var (
+		title    string
+		year     model.Year
+		episodes model.Episodes
+		rest     string
+		err      error
+		absolute bool
+	)
+
+	if !result.ContentType.Valid || result.ContentType.ContentType == model.ContentTypeTvShow {
+		title, year, episodes, rest, err = parseAbsoluteEpisode(name)
+		absolute = err == nil
+	}
+
+	if !absolute {
+		title, year, episodes, rest, err = ParseTitleYearEpisodes(result.ContentType, name)
+	}
+
 	if err != nil {
 		if !result.ContentType.Valid {
 			return classification.ContentAttributes{}, err
@@ -220,7 +239,7 @@ func ParseVideoContent(torrent model.Torrent, result classification.Result) (cla
 	switch {
 	case result.ContentType.Valid:
 		ct = model.NullContentType{Valid: true, ContentType: result.ContentType.ContentType}
-	case len(episodes) > 0 || result.Date.IsValid():
+	case len(episodes) > 0 || absolute || result.Date.IsValid():
 		ct = model.NullContentType{Valid: true, ContentType: model.ContentTypeTvShow}
 	case !year.IsNil():
 		ct = model.NullContentType{Valid: true, ContentType: model.ContentTypeMovie}
