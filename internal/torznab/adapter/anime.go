@@ -1,14 +1,17 @@
 package adapter
 
 import (
+	"slices"
+
 	"github.com/bitmagnet-io/bitmagnet/internal/database/query"
 	"github.com/bitmagnet-io/bitmagnet/internal/database/search"
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
 )
 
-// Anime is identified as TV content originally in Japanese with the TMDB Animation genre.
+// Anime is identified as TV content with the TMDB Animation genre, originally in Japanese, Chinese or Korean
+// (*arr apps treat Chinese donghua and Korean animation as anime too).
 var (
-	animeLanguage   = model.Language("ja")
+	animeLanguages  = []model.Language{"ja", "zh", "ko"}
 	animeCollection = model.ContentCollectionRef{
 		Type:   "genre",
 		Source: "tmdb",
@@ -18,13 +21,13 @@ var (
 
 func animeCriteria() query.Criteria {
 	return query.And(
-		search.ContentOriginalLanguageCriteria(animeLanguage),
+		search.ContentOriginalLanguageCriteria(animeLanguages...),
 		search.ContentCollectionCriteria(animeCollection),
 	)
 }
 
 func isAnime(content model.Content) bool {
-	if !content.OriginalLanguage.Valid || content.OriginalLanguage.Language != animeLanguage {
+	if !content.OriginalLanguage.Valid || !slices.Contains(animeLanguages, content.OriginalLanguage.Language) {
 		return false
 	}
 

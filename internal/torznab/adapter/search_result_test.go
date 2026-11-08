@@ -201,7 +201,17 @@ func TestTorrentContentResultItemCategories(t *testing.T) {
 			expected: []string{"5000"},
 		},
 		{
-			name:     "non-japanese animation",
+			name:     "chinese animation",
+			item:     resultItem(model.ContentTypeTvShow, tvContent("zh", animation)),
+			expected: []string{"5000", "5070"},
+		},
+		{
+			name:     "korean animation",
+			item:     resultItem(model.ContentTypeTvShow, tvContent("ko", animation)),
+			expected: []string{"5000", "5070"},
+		},
+		{
+			name:     "english animation",
 			item:     resultItem(model.ContentTypeTvShow, tvContent("en", animation)),
 			expected: []string{"5000"},
 		},

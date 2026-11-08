@@ -18,7 +18,7 @@ const (
 	sqlTMDBMovie = `"content"."type" = 'movie' AND "content"."source" = 'tmdb' AND "content"."id" = '496243'`
 	sqlTMDBTV    = `"content"."type" = 'tv_show' AND "content"."source" = 'tmdb' AND "content"."id" = '250923'`
 	sqlTMDBAny   = `("content"."source" = 'tmdb' AND "content"."id" = '496243')`
-	sqlAnime     = `"content"."original_language" = 'ja'`
+	sqlAnime     = `"content"."original_language" IN ('ja','zh','ko')`
 	sqlAnimation = `"content_collections_content"."content_collection_type" = 'genre' AND ` +
 		`"content_collections_content"."content_collection_source" = 'tmdb' AND ` +
 		`"content_collections_content"."content_collection_id" = '16'`
