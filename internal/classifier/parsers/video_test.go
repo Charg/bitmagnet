@@ -261,6 +261,19 @@ func TestParseVideoContent(t *testing.T) {
 			title:       "The Bear",
 			episodes:    model.Episodes{2: {}},
 		},
+		// year-like numbers after "Season" are not seasons
+		{
+			input:       "PL.Review.Goals.of.the.Season.2022-23.BTSportHD.1080p25.IPTV.mkv",
+			contentType: movie,
+			title:       "PL Review Goals of the Season",
+			year:        2022,
+		},
+		{
+			input:       "PL Review Goals of the Season 2022-23 BTSportHD 1080p25 IPTV.mkv",
+			contentType: movie,
+			title:       "PL Review Goals of the Season",
+			year:        2022,
+		},
 		// episode version suffix
 		{
 			input:       "Boku no Hero Academia - S07E06v2 - 1080p WEB x264 -NanDesuKa (CR).mkv",
