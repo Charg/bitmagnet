@@ -2,6 +2,7 @@ package parsers
 
 import (
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -162,9 +163,15 @@ func widenEpisodesMatch(input string, title string, match []string) (string, []s
 	return title, match
 }
 
-// seasonNumberTruncated reports whether a matched season number (given as start/end index pairs of the
-// season start and end groups) is immediately followed by another digit, e.g. "Season.2022-23" matching season 20.
+// seasonNumberTruncated reports whether a season number following the "season" keyword (given as start/end index
+// pairs of the season start and end groups) is immediately followed by another digit,
+// e.g. "Season.2022-23" matching season 202.
 func seasonNumberTruncated(input string, seasonIdx []int) bool {
+	if seasonIdx[0] < 0 ||
+		!strings.HasSuffix(strings.ToLower(strings.TrimRight(input[:seasonIdx[0]], " ._")), "season") {
+		return false
+	}
+
 	for i := 1; i < len(seasonIdx); i += 2 {
 		if end := seasonIdx[i]; end >= 0 && end < len(input) && unicode.IsDigit(rune(input[end])) {
 			return true
