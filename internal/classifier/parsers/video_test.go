@@ -141,6 +141,50 @@ func TestParseVideoContent(t *testing.T) {
 			title:       "The Last of Us",
 			episodes:    model.Episodes{2: {3: {}}},
 		},
+		// CJK-only titles are kept when no Latin title follows
+		{
+			input:       "一叠间漫画咖啡屋生活 - S01E09 - [三明治摆烂组][简繁日内封][H265 10bit 1080P].mkv",
+			contentType: tvShow,
+			title:       "一叠间漫画咖啡屋生活",
+			episodes:    model.Episodes{1: {9: {}}},
+		},
+		{
+			input:       "一叠间漫画咖啡屋生活 - S01E01 - [三明治摆烂组][简繁日内封][H265 10bit 1080P][V2].mkv",
+			contentType: tvShow,
+			title:       "一叠间漫画咖啡屋生活",
+			episodes:    model.Episodes{1: {1: {}}},
+		},
+		{
+			input:       "魔戒：力量之戒_S02E03_大鷹與王位.mp4",
+			contentType: tvShow,
+			// cleanTitle doesn't handle full-width punctuation, this is the pre-existing title:
+			title:    "魔戒 ：力量之戒 ",
+			episodes: model.Episodes{2: {3: {}}},
+		},
+		{
+			input:       "大白鲨.Jaws.1975.1080p.BluRay.x264-GROUP",
+			contentType: movie,
+			title:       "Jaws",
+			year:        1975,
+		},
+		{
+			input:       "流人.Slow.Horses.S06E01.1080p.ATVP.WEB-DL.H264-GROUP",
+			contentType: tvShow,
+			title:       "Slow Horses",
+			episodes:    model.Episodes{6: {1: {}}},
+		},
+		{
+			input:       "权力交锋.Collision.S01E30.2160p.WEB-DL.H265-GROUP",
+			contentType: tvShow,
+			title:       "Collision",
+			episodes:    model.Episodes{1: {30: {}}},
+		},
+		{
+			input:       "辐射S02E03.Fallout.S02E03.1080P.AMZN.WEB-DL.H264-GROUP",
+			contentType: tvShow,
+			title:       "Fallout",
+			episodes:    model.Episodes{2: {3: {}}},
+		},
 		// "S2 - 05" is season 2 episode 5, not a season range
 		{
 			input:       "[SubsPlease] Sousou no Frieren S2 - 05 (720p) [6FD1E83B].mkv",
@@ -216,6 +260,19 @@ func TestParseVideoContent(t *testing.T) {
 			contentType: tvShow,
 			title:       "The Bear",
 			episodes:    model.Episodes{2: {}},
+		},
+		// year-like numbers after "Season" are not seasons
+		{
+			input:       "PL.Review.Goals.of.the.Season.2022-23.BTSportHD.1080p25.IPTV.mkv",
+			contentType: movie,
+			title:       "PL Review Goals of the Season",
+			year:        2022,
+		},
+		{
+			input:       "PL Review Goals of the Season 2022-23 BTSportHD 1080p25 IPTV.mkv",
+			contentType: movie,
+			title:       "PL Review Goals of the Season",
+			year:        2022,
 		},
 		// episode version suffix
 		{

@@ -151,12 +151,39 @@ func widenEpisodesMatch(input string, title string, match []string) (string, []s
 			continue
 		}
 
-		if m := leadingEpisodesRegex.FindStringSubmatch(input[i:]); m != nil && i+len(m[0]) > len(title) {
-			return input[:i], append([]string{input[:i+len(m[0])], input[:i]}, m[1:]...)
+		idx := leadingEpisodesRegex.FindStringSubmatchIndex(input[i:])
+		if idx != nil && i+idx[1] > len(title) && !seasonNumberTruncated(input[i:], idx[6:10]) {
+			m := submatches(input[i:], idx)
+
+			return input[:i], append([]string{input[:i+idx[1]], input[:i]}, m[1:]...)
 		}
 	}
 
 	return title, match
+}
+
+// seasonNumberTruncated reports whether a matched season number (given as start/end index pairs of the
+// season start and end groups) is immediately followed by another digit, e.g. "Season.2022-23" matching season 20.
+func seasonNumberTruncated(input string, seasonIdx []int) bool {
+	for i := 1; i < len(seasonIdx); i += 2 {
+		if end := seasonIdx[i]; end >= 0 && end < len(input) && unicode.IsDigit(rune(input[end])) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func submatches(input string, idx []int) []string {
+	match := make([]string, len(idx)/2)
+
+	for i := range match {
+		if idx[2*i] >= 0 {
+			match[i] = input[idx[2*i]:idx[2*i+1]]
+		}
+	}
+
+	return match
 }
 
 func isWordByte(b byte) bool {
@@ -164,9 +191,9 @@ func isWordByte(b byte) bool {
 }
 
 func parseTitleYearEpisodes(input string) (string, model.Year, model.Episodes, string, error) {
-	if match := titleEpisodesRegex.FindStringSubmatch(input); match != nil {
-		var title string
-		title, match = widenEpisodesMatch(input, match[1], match)
+	if idx := titleEpisodesRegex.FindStringSubmatchIndex(input); idx != nil && !seasonNumberTruncated(input, idx[8:12]) {
+		match := submatches(input, idx)
+		title, match := widenEpisodesMatch(input, match[1], match)
 		year := model.Year(0)
 
 		if t, y, _, err := parseTitleYear(title); err == nil {
