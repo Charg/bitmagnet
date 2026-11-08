@@ -16,6 +16,7 @@ import (
 
 type Params struct {
 	fx.In
+	Config           Config
 	KTable           ktable.Table
 	DiscoveredNodes  concurrency.BatchingChannel[ktable.Node] `name:"dht_discovered_nodes"`
 	DiscoveredHashes chan dht.DiscoveredHash                  `name:"dht_discovered_hashes"`
@@ -44,7 +45,14 @@ func New(p Params) Result {
 			tokenSecret:              protocol.RandomNodeID().Bytes(),
 			sampleInfoHashesInterval: 10,
 		},
-		limiter: NewLimiter(rate.Every(time.Second/1000), 200, rate.Every(time.Second), 10, 100_000, time.Second*20),
+		limiter: NewLimiter(
+			rate.Limit(p.Config.MaxRequestsPerSecond),
+			int(p.Config.MaxRequestsBurst),
+			rate.Every(time.Second),
+			10,
+			100_000,
+			time.Second*20,
+		),
 	})
 
 	return Result{

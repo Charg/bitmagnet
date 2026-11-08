@@ -14,6 +14,7 @@ func New() fx.Option {
 	return fx.Module(
 		"dht",
 		configfx.NewConfigModule[server.Config]("dht_server", server.NewDefaultConfig()),
+		configfx.NewConfigModule[responder.Config]("dht_responder", responder.NewDefaultConfig()),
 		fx.Provide(
 			fx.Annotated{
 				Name:   "dht_node_id",
