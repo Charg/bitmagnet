@@ -33,7 +33,7 @@ func New(p Params) Result {
 		clientID: protocol.RandomPeerID(),
 		timeout:  p.Config.RequestTimeout,
 		dialer: &net.Dialer{
-			Timeout:   3 * time.Second,
+			Timeout:   p.Config.DialTimeout,
 			KeepAlive: -1,
 		},
 	})
