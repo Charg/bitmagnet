@@ -54,6 +54,14 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 		options = append(options,
 			query.SearchString(r.Query),
 			query.OrderBy(order.Clauses(search.OrderDirectionDescending)...))
+	} else if r.IMDBID.Valid || r.TMDBID.Valid || r.TVDBID.Valid || r.Season.Valid {
+		// a targeted search can have many matches, so put the best seeded first so they fall within the first page,
+		// while RSS (no query or targets) keeps the default newest-first order
+		options = append(options, query.OrderBy(seedersOrder()...))
+	}
+
+	if r.Profile.MinSeeders > 0 {
+		options = append(options, query.Where(search.TorrentContentMinSeedersCriteria(r.Profile.MinSeeders)))
 	}
 
 	var catsCriteria []query.Criteria
@@ -220,4 +228,12 @@ func idCriteria(r torznab.SearchRequest) []query.Criteria {
 	}
 
 	return criteria
+}
+
+func seedersOrder() []query.OrderByColumn {
+	// skip the info hash tie-breaker of the seeders order so that published_at applies
+	return append(
+		search.TorrentContentOrderBySeeders.Clauses(search.OrderDirectionDescending)[:1],
+		search.TorrentContentOrderByPublishedAt.Clauses(search.OrderDirectionDescending)...,
+	)
 }

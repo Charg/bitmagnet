@@ -20,6 +20,13 @@ const (
 		`"content_collections_content"."content_collection_source" = 'tmdb' AND ` +
 		`"content_collections_content"."content_collection_id" = '16'`
 	sqlTVDBTV = `"content_attributes"."source" = 'tvdb' AND "content_attributes"."value" = '421069'`
+	// MinSeeders
+	sqlMinSeeders = `("torrent_contents"."seeders" IS NULL OR "torrent_contents"."seeders" >= 5)`
+	// ordering
+	sqlOrderNewest  = `SELECT *, "torrent_contents"."published_at" AS _order_0 FROM`
+	sqlOrderSeeders = `SELECT *, coalesce(torrent_contents.seeders, -1) AS _order_0, ` +
+		`"torrent_contents"."published_at" AS _order_1, "torrent_contents"."info_hash" AS _order_2 FROM`
+	sqlOrderSeedersBy = `ORDER BY "_order_0" DESC,"_order_1" DESC,"_order_2" DESC`
 )
 
 func TestSearchRequestToQueryOptions(t *testing.T) {
@@ -129,6 +136,67 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 			notContains: []string{sqlAnime},
 		},
 		{
+			name: "min seeders excludes torrents with known seeders below the threshold",
+			request: torznab.SearchRequest{
+				Profile: profileWithMinSeeders(5),
+				Type:    torznab.FunctionSearch,
+			},
+			contains: []string{sqlMinSeeders},
+		},
+		{
+			name: "min seeders disabled by default",
+			request: torznab.SearchRequest{
+				Type: torznab.FunctionSearch,
+			},
+			notContains: []string{"seeders"},
+		},
+		{
+			name: "rss orders by newest",
+			request: torznab.SearchRequest{
+				Type: torznab.FunctionTV,
+				Cats: []int{torznab.CategoryTV.ID},
+			},
+			contains:    []string{sqlOrderNewest},
+			notContains: []string{"seeders"},
+		},
+		{
+			name: "tv id search without query orders by seeders",
+			request: torznab.SearchRequest{
+				Type:    torznab.FunctionTV,
+				IMDBID:  model.NewNullString("26933824"),
+				TMDBID:  model.NewNullString("250923"),
+				Season:  model.NewNullInt(3),
+				Episode: model.NewNullInt(1),
+			},
+			contains: []string{sqlOrderSeeders, sqlOrderSeedersBy},
+		},
+		{
+			name: "movie id search without query orders by seeders",
+			request: torznab.SearchRequest{
+				Type:   torznab.FunctionMovie,
+				IMDBID: model.NewNullString("6751668"),
+			},
+			contains: []string{sqlOrderSeeders, sqlOrderSeedersBy},
+		},
+		{
+			name: "tv season search without query orders by seeders",
+			request: torznab.SearchRequest{
+				Type:   torznab.FunctionTV,
+				Season: model.NewNullInt(1),
+			},
+			contains: []string{sqlOrderSeeders, sqlOrderSeedersBy},
+		},
+		{
+			name: "id search with query orders by relevance",
+			request: torznab.SearchRequest{
+				Type:   torznab.FunctionMovie,
+				Query:  "foo",
+				IMDBID: model.NewNullString("6751668"),
+			},
+			contains:    []string{"SELECT *, ts_rank_cd(torrent_contents.tsv, 'foo'::tsquery) AS _order_0 FROM"},
+			notContains: []string{"seeders"},
+		},
+		{
 			name: "tv search with imdb id restricts to tv shows",
 			request: torznab.SearchRequest{
 				Type:   torznab.FunctionTV,
@@ -166,4 +234,11 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func profileWithMinSeeders(minSeeders uint) torznab.Profile {
+	profile := torznab.ProfileDefault
+	profile.MinSeeders = minSeeders
+
+	return profile
 }
