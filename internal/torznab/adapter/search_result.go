@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/database/search"
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
@@ -165,10 +166,12 @@ func torrentContentResultItemToTorznabResultItem(item search.TorrentContentResul
 	}
 
 	if imdbID, ok := item.Content.Identifier("imdb"); ok {
-		attrs = append(attrs, torznab.SearchResultItemTorznabAttr{
-			AttrName:  torznab.AttrImdb,
-			AttrValue: imdbID[2:],
-		})
+		if imdbID = strings.TrimPrefix(imdbID, "tt"); imdbID != "" {
+			attrs = append(attrs, torznab.SearchResultItemTorznabAttr{
+				AttrName:  torznab.AttrImdb,
+				AttrValue: imdbID,
+			})
+		}
 	}
 
 	return torznab.SearchResultItem{

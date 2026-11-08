@@ -178,10 +178,13 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 func idCriteria(r torznab.SearchRequest) []query.Criteria {
 	var criteria []query.Criteria
 
+	// the content type is unrestricted for a generic search
 	var ct model.ContentType
-	if r.Type != torznab.FunctionTV {
+
+	switch r.Type {
+	case torznab.FunctionMovie:
 		ct = model.ContentTypeMovie
-	} else if r.Type != torznab.FunctionMovie {
+	case torznab.FunctionTV:
 		ct = model.ContentTypeTvShow
 	}
 

@@ -11,8 +11,10 @@ import (
 const (
 	sqlIMDBMovie = `"content_attributes"."content_type" = 'movie' AND "content_attributes"."content_type" = "content"."type"`
 	sqlIMDBTV    = `"content_attributes"."content_type" = 'tv_show' AND "content_attributes"."content_type" = "content"."type"`
+	sqlIMDBAny   = `EXISTS (SELECT * FROM "content_attributes" WHERE "content_attributes"."content_type" = "content"."type"`
 	sqlTMDBMovie = `"content"."type" = 'movie' AND "content"."source" = 'tmdb' AND "content"."id" = '496243'`
 	sqlTMDBTV    = `"content"."type" = 'tv_show' AND "content"."source" = 'tmdb' AND "content"."id" = '250923'`
+	sqlTMDBAny   = `("content"."source" = 'tmdb' AND "content"."id" = '496243')`
 )
 
 func TestSearchRequestToQueryOptions(t *testing.T) {
@@ -48,6 +50,24 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 				sqlIMDBMovie,
 				`"content_attributes"."value" = 'tt6751668') OR (` + sqlTMDBMovie,
 			},
+		},
+		{
+			name: "generic search with imdb id does not restrict content type",
+			request: torznab.SearchRequest{
+				Type:   torznab.FunctionSearch,
+				IMDBID: model.NewNullString("6751668"),
+			},
+			contains:    []string{sqlIMDBAny, `"content_attributes"."value" = 'tt6751668'`},
+			notContains: []string{"'movie'", "'tv_show'"},
+		},
+		{
+			name: "generic search with tmdb id does not restrict content type",
+			request: torznab.SearchRequest{
+				Type:   torznab.FunctionSearch,
+				TMDBID: model.NewNullString("496243"),
+			},
+			contains:    []string{sqlTMDBAny},
+			notContains: []string{"'movie'", "'tv_show'"},
 		},
 		{
 			name: "tv search with imdb id restricts to tv shows",
