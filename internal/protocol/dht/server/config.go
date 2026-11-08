@@ -10,6 +10,6 @@ type Config struct {
 func NewDefaultConfig() Config {
 	return Config{
 		Port:         3334,
-		QueryTimeout: time.Second * 4,
+		QueryTimeout: time.Second * 2,
 	}
 }

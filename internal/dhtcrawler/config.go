@@ -22,10 +22,6 @@ type Config struct {
 	// RescrapeThreshold is the amount of time that must pass before a torrent is rescraped
 	// to count seeders and leechers.
 	RescrapeThreshold time.Duration
-	// SkipRecentlySeenNodes when true, discovered nodes that were recently contacted are not contacted again,
-	// even if they are no longer in the routing table. This reduces duplicate queries on long-running crawls,
-	// but on lossy networks it can starve the routing table, as nodes that timed out once are not retried.
-	SkipRecentlySeenNodes bool
 }
 
 func NewDefaultConfig() Config {
