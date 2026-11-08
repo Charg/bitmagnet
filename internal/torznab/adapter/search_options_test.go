@@ -179,12 +179,13 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 			contains: []string{sqlOrderSeeders, sqlOrderSeedersBy},
 		},
 		{
-			name: "tv season search without query orders by seeders",
+			name: "tv season search without query or ids keeps newest first",
 			request: torznab.SearchRequest{
 				Type:   torznab.FunctionTV,
 				Season: model.NewNullInt(1),
 			},
-			contains: []string{sqlOrderSeeders, sqlOrderSeedersBy},
+			contains:    []string{sqlOrderNewest},
+			notContains: []string{"seeders"},
 		},
 		{
 			name: "id search with query orders by relevance",
