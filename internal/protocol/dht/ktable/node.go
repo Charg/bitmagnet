@@ -24,7 +24,6 @@ func (k *nodeKeyspace) getLastRespondedBefore(t time.Time) []Node {
 }
 
 func (k *nodeKeyspace) getCandidatesForSampleInfoHashes(n int) []*node {
-	//nolint:prealloc
 	var candidates []*node
 
 	now := time.Now()

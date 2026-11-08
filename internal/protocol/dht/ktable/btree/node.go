@@ -1,5 +1,7 @@
 package btree
 
+import "slices"
+
 type baseNode struct {
 	origin NodeID
 	bit    Bit
@@ -354,11 +356,7 @@ func (n branchNode) furthestXor() (NodeID, bool) {
 }
 
 func (n branchNode) allXors() []NodeID {
-	var xors []NodeID
-	xors = append(xors, n.branches[Bit0].allXors()...)
-	xors = append(xors, n.branches[Bit1].allXors()...)
-
-	return xors
+	return slices.Concat(n.branches[Bit0].allXors(), n.branches[Bit1].allXors())
 }
 
 func (n branchNode) any() bool {

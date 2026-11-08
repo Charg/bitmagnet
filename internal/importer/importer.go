@@ -117,12 +117,14 @@ type activeImport struct {
 
 func (i *activeImport) run(ctx context.Context) {
 	i.mutex.Lock()
-	go (func() {
+	go func() {
 		iCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
+
 		i.ctx = iCtx
 		i.stop = cancel
 		i.mutex.Unlock()
+
 		for {
 			select {
 			case <-iCtx.Done():
@@ -132,12 +134,13 @@ func (i *activeImport) run(ctx context.Context) {
 				if !ok {
 					return
 				}
+
 				go i.buffer(item)
 			case <-time.After(i.maxWaitTime):
 				go i.flush()
 			}
 		}
-	})()
+	}()
 }
 
 func (i *activeImport) buffer(item Item) {
@@ -244,9 +247,11 @@ func (i *activeImport) persistItems(items ...Item) error {
 			}
 		}
 
-		if createTorrentsTorrentSourcesErr := tx.TorrentsTorrentSource.WithContext(i.ctx).Clauses(clause.OnConflict{
-			UpdateAll: true,
-		}).CreateInBatches(torrentsTorrentSources, 100); createTorrentsTorrentSourcesErr != nil {
+		if createTorrentsTorrentSourcesErr := tx.TorrentsTorrentSource.WithContext(i.ctx).
+			Clauses(clause.OnConflict{
+				UpdateAll: true,
+			}).
+			CreateInBatches(torrentsTorrentSources, 100); createTorrentsTorrentSourcesErr != nil {
 			return createTorrentsTorrentSourcesErr
 		}
 

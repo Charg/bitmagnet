@@ -74,6 +74,12 @@ linters:
     - whitespace
     - wsl
   settings:
+    goconst:
+      ignore-tests: true
+      # Newer goconst also checks composite literals, which flags SQL column names, JSON schema keys etc.
+      exclude-types:
+        - Call
+        - CompositeLit
     revive:
       rules:
         - name: argument-limit

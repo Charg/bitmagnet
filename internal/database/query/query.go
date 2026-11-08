@@ -61,7 +61,6 @@ func GenericQuery[T interface{}](
 	wg := sync.WaitGroup{}
 	wg.Add(3)
 
-	//nolint:contextcheck
 	go func() {
 		defer wg.Done()
 		gq.doItems()
@@ -794,14 +793,16 @@ func (b optionBuilder) applyCallbacks(ctx context.Context, results any) error {
 	wg.Add(len(b.callbacks))
 
 	for _, cb := range b.callbacks {
-		go (func(cb Callback) {
+		go func(cb Callback) {
 			defer wg.Done()
+
 			if err := cb(ctx, cbCtx, results); err != nil {
 				cbCtx.Lock()
 				defer cbCtx.Unlock()
+
 				errs = append(errs, err)
 			}
-		})(cb)
+		}(cb)
 	}
 
 	wg.Wait()

@@ -206,5 +206,5 @@ func TestPanicRecovery(t *testing.T) {
 	checkRes, checkResultExists := res.Details["iPanic"]
 	assert.True(t, checkResultExists)
 	require.Error(t, checkRes.Error)
-	assert.Equal(t, expectedPanicMsg, (checkRes.Error).Error())
+	assert.Equal(t, expectedPanicMsg, checkRes.Error.Error())
 }

@@ -78,7 +78,7 @@ func (f features) JSONSchema() JSONSchema {
 				},
 				"action_single": map[string]any{
 					"oneOf": func() []map[string]any {
-						var result []map[string]any
+						result := make([]map[string]any, 0, len(f.actions))
 						for _, def := range f.actions {
 							result = append(result, map[string]any{
 								"$ref": "#/definitions/action__" + def.name(),
@@ -89,7 +89,7 @@ func (f features) JSONSchema() JSONSchema {
 				},
 				"condition": map[string]any{
 					"oneOf": func() []map[string]any {
-						var result []map[string]any
+						result := make([]map[string]any, 0, len(f.conditions))
 						for _, def := range f.conditions {
 							result = append(result, map[string]any{
 								"$ref": "#/definitions/condition__" + def.name(),

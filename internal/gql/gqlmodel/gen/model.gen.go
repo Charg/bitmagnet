@@ -3,6 +3,7 @@
 package gen
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -311,7 +312,21 @@ func (e *HealthStatus) UnmarshalGQL(v any) error {
 }
 
 func (e HealthStatus) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *HealthStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e HealthStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type MetricsBucketDuration string
@@ -354,7 +369,21 @@ func (e *MetricsBucketDuration) UnmarshalGQL(v any) error {
 }
 
 func (e MetricsBucketDuration) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *MetricsBucketDuration) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e MetricsBucketDuration) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type QueueJobsOrderByField string
@@ -397,7 +426,21 @@ func (e *QueueJobsOrderByField) UnmarshalGQL(v any) error {
 }
 
 func (e QueueJobsOrderByField) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *QueueJobsOrderByField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e QueueJobsOrderByField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type TorrentContentOrderByField string
@@ -452,7 +495,21 @@ func (e *TorrentContentOrderByField) UnmarshalGQL(v any) error {
 }
 
 func (e TorrentContentOrderByField) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TorrentContentOrderByField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TorrentContentOrderByField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type TorrentFilesOrderByField string
@@ -497,5 +554,19 @@ func (e *TorrentFilesOrderByField) UnmarshalGQL(v any) error {
 }
 
 func (e TorrentFilesOrderByField) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TorrentFilesOrderByField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TorrentFilesOrderByField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

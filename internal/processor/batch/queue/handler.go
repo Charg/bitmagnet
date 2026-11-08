@@ -48,7 +48,10 @@ func New(p Params) Result {
 							if !ct.Valid {
 								unknownContentType = true
 							} else {
-								contentTypes = append(contentTypes, ct.ContentType.String())
+								contentTypes = append(
+									contentTypes,
+									ct.ContentType.String(),
+								)
 							}
 						}
 						scopes = append(scopes, func(tx gen.Dao) gen.Dao {
