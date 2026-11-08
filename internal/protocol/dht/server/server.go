@@ -207,8 +207,9 @@ func (s *server) Query(
 		r = res
 
 		if res.Msg.Y == dht.YError {
-			err = res.Msg.E
-			if err == nil {
+			if res.Msg.E != nil {
+				err = res.Msg.E
+			} else {
 				err = errors.New("error missing from response")
 			}
 		} else if r.Msg.R == nil {

@@ -1,8 +1,13 @@
 package dhtcrawler
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"net/netip"
 	"testing"
+
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -28,4 +33,28 @@ func TestSeenNodes(t *testing.T) {
 	assert.False(t, s.testAndAdd(a))
 	assert.True(t, s.testAndAdd(a))
 	assert.False(t, s.testAndAdd(netip.MustParseAddrPort("1.2.3.4:6882")))
+}
+
+func TestAsKRPCError(t *testing.T) {
+	t.Parallel()
+
+	methodUnknown := dht.Error{Code: dht.ErrorCodeMethodUnknown, Msg: "method unknown"}
+
+	for name, err := range map[string]error{
+		"pointer":         &methodUnknown,
+		"value":           methodUnknown,
+		"wrapped pointer": fmt.Errorf("query failed: %w", &methodUnknown),
+	} {
+		krpcErr, ok := asKRPCError(err)
+		assert.True(t, ok, name)
+		assert.Equal(t, dht.ErrorCodeMethodUnknown, krpcErr.Code, name)
+	}
+
+	for name, err := range map[string]error{
+		"timeout": context.DeadlineExceeded,
+		"other":   errors.New("boom"),
+	} {
+		_, ok := asKRPCError(err)
+		assert.False(t, ok, name)
+	}
 }

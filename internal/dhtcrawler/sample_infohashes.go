@@ -30,6 +30,21 @@ func sampleInfoHashesInterval(interval, num, numSamples int) int {
 	return min(interval, maxSampleInfoHashesInterval)
 }
 
+// asKRPCError extracts a KRPC error response from err; the server returns these as *dht.Error.
+func asKRPCError(err error) (dht.Error, bool) {
+	var ptr *dht.Error
+	if errors.As(err, &ptr) && ptr != nil {
+		return *ptr, true
+	}
+
+	var val dht.Error
+	if errors.As(err, &val) {
+		return val, true
+	}
+
+	return dht.Error{}, false
+}
+
 func (c *crawler) getNodesForSampleInfoHashes(ctx context.Context) {
 	for {
 		peers := c.kTable.GetNodesForSampleInfoHashes(60)
@@ -54,8 +69,7 @@ func (c *crawler) runSampleInfoHashes(ctx context.Context) {
 
 		res, err := c.client.SampleInfoHashes(ctx, n.Addr(), c.soughtNodeID.Get())
 		if err != nil {
-			var krpcErr dht.Error
-			if errors.As(err, &krpcErr) {
+			if krpcErr, ok := asKRPCError(err); ok {
 				// the node responded, so it is alive and still useful for routing.
 				options := []ktable.NodeOption{ktable.NodeResponded()}
 				if krpcErr.Code == dht.ErrorCodeMethodUnknown {
