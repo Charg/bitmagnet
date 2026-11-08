@@ -54,6 +54,7 @@ func (p Profile) Caps() Caps {
 					ParamQuery,
 					ParamIMDBID,
 					ParamTMDBID,
+					ParamTVDBID,
 				}, ","),
 			},
 			TvSearch: CapsSearch{
@@ -62,6 +63,7 @@ func (p Profile) Caps() Caps {
 					ParamQuery,
 					ParamIMDBID,
 					ParamTMDBID,
+					ParamTVDBID,
 					ParamSeason,
 					ParamEpisode,
 				}, ","),

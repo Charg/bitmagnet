@@ -162,7 +162,19 @@ func torrentContentResultItemToTorznabResultItem(item search.TorrentContentResul
 		attrs = append(attrs, torznab.SearchResultItemTorznabAttr{
 			AttrName:  torznab.AttrTmdb,
 			AttrValue: tmdbID,
+		}, torznab.SearchResultItemTorznabAttr{
+			AttrName:  torznab.AttrTmdbID,
+			AttrValue: tmdbID,
 		})
+	}
+
+	if item.Content.Type == model.ContentTypeTvShow {
+		if tvdbID, ok := item.Content.Identifier("tvdb"); ok {
+			attrs = append(attrs, torznab.SearchResultItemTorznabAttr{
+				AttrName:  torznab.AttrTvdbID,
+				AttrValue: tvdbID,
+			})
+		}
 	}
 
 	if imdbID, ok := item.Content.Identifier("imdb"); ok {

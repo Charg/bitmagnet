@@ -15,6 +15,7 @@ const (
 	sqlTMDBMovie = `"content"."type" = 'movie' AND "content"."source" = 'tmdb' AND "content"."id" = '496243'`
 	sqlTMDBTV    = `"content"."type" = 'tv_show' AND "content"."source" = 'tmdb' AND "content"."id" = '250923'`
 	sqlTMDBAny   = `("content"."source" = 'tmdb' AND "content"."id" = '496243')`
+	sqlTVDBTV    = `"content_attributes"."source" = 'tvdb' AND "content_attributes"."value" = '421069'`
 )
 
 func TestSearchRequestToQueryOptions(t *testing.T) {
@@ -68,6 +69,28 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 			},
 			contains:    []string{sqlTMDBAny},
 			notContains: []string{"'movie'", "'tv_show'"},
+		},
+		{
+			name: "tv search with tvdb id",
+			request: torznab.SearchRequest{
+				Type:   torznab.FunctionTV,
+				TVDBID: model.NewNullString("421069"),
+			},
+			contains:    []string{sqlIMDBTV, sqlTVDBTV},
+			notContains: []string{"'movie'"},
+		},
+		{
+			name: "tv search with imdb, tmdb and tvdb ids matches any id",
+			request: torznab.SearchRequest{
+				Type:   torznab.FunctionTV,
+				IMDBID: model.NewNullString("26933824"),
+				TMDBID: model.NewNullString("250923"),
+				TVDBID: model.NewNullString("421069"),
+			},
+			contains: []string{
+				`"content_attributes"."value" = 'tt26933824') OR (` + sqlTMDBTV + `) OR EXISTS (`,
+				sqlTVDBTV,
+			},
 		},
 		{
 			name: "tv search with imdb id restricts to tv shows",

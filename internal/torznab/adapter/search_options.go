@@ -209,5 +209,13 @@ func idCriteria(r torznab.SearchRequest) []query.Criteria {
 		}))
 	}
 
+	if r.TVDBID.Valid {
+		criteria = append(criteria, search.ContentAlternativeIdentifierCriteria(model.ContentRef{
+			Type:   ct,
+			Source: "tvdb",
+			ID:     r.TVDBID.String,
+		}))
+	}
+
 	return criteria
 }

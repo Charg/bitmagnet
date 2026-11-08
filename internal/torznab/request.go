@@ -11,6 +11,7 @@ type SearchRequest struct {
 	Cats     []int
 	IMDBID   model.NullString
 	TMDBID   model.NullString
+	TVDBID   model.NullString
 	Season   model.NullInt
 	Episode  model.NullInt
 	Attrs    []string

@@ -182,6 +182,19 @@ func TestSearch(t *testing.T) {
 				Episode: model.NewNullInt(3),
 			},
 		},
+		{
+			url: fmt.Sprintf("/torznab/%s?%s", torznab.ProfileDefault.ID, url.Values{
+				torznab.ParamType:   []string{torznab.FunctionTV},
+				torznab.ParamTVDBID: []string{"421069"},
+				torznab.ParamIMDBID: []string{"26933824"},
+			}.Encode()),
+			expectedRequest: torznab.SearchRequest{
+				Profile: torznab.ProfileDefault,
+				Type:    torznab.FunctionTV,
+				IMDBID:  model.NewNullString("26933824"),
+				TVDBID:  model.NewNullString("421069"),
+			},
+		},
 	} {
 		t.Run(testCase.url, func(t *testing.T) {
 			t.Parallel()

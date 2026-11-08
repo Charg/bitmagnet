@@ -73,3 +73,48 @@ func TestTorrentContentResultItemIMDBAttr(t *testing.T) {
 		})
 	}
 }
+
+func TestTorrentContentResultItemIDAttrs(t *testing.T) {
+	t.Parallel()
+
+	for _, testCase := range []struct {
+		name     string
+		item     search.TorrentContentResultItem
+		expected map[string][]string
+	}{
+		{
+			name: "tv show",
+			item: resultItem(model.ContentTypeTvShow, contentWithIDs(
+				model.ContentTypeTvShow, "250923", map[string]string{"imdb": "tt26933824", "tvdb": "421069"},
+			)),
+			expected: map[string][]string{
+				torznab.AttrImdb:   {"26933824"},
+				torznab.AttrTmdb:   {"250923"},
+				torznab.AttrTmdbID: {"250923"},
+				torznab.AttrTvdbID: {"421069"},
+			},
+		},
+		{
+			name: "movie",
+			item: resultItem(model.ContentTypeMovie, contentWithIDs(
+				model.ContentTypeMovie, "496243", map[string]string{"imdb": "tt6751668", "tvdb": "123"},
+			)),
+			expected: map[string][]string{
+				torznab.AttrImdb:   {"6751668"},
+				torznab.AttrTmdb:   {"496243"},
+				torznab.AttrTmdbID: {"496243"},
+				torznab.AttrTvdbID: nil,
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			item := torrentContentResultItemToTorznabResultItem(testCase.item)
+
+			for name, values := range testCase.expected {
+				assert.Equal(t, values, attrValues(item, name), name)
+			}
+		})
+	}
+}

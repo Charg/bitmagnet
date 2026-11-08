@@ -19,6 +19,10 @@ const (
 	AttrVideo      = "video"
 	AttrResolution = "resolution"
 	AttrTeam       = "team"
-	AttrImdb       = "imdb"
-	AttrTmdb       = "tmdb"
+	// AttrImdb is the IMDb ID without the tt prefix
+	AttrImdb = "imdb"
+	// AttrTmdb is a non-standard attribute kept for compatibility; AttrTmdbID is the spec name
+	AttrTmdb   = "tmdb"
+	AttrTmdbID = "tmdbid"
+	AttrTvdbID = "tvdbid"
 )
