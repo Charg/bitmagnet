@@ -51,7 +51,9 @@ func TestRequestForDiscoveredHash(t *testing.T) {
 			ktable.NewNode(protocol.RandomNodeID(), closestAddr),
 		})
 
-		req, ok := c.requestForDiscoveredHash(dht.DiscoveredHash{InfoHash: hash, Source: dht.QGetPeers, From: from})
+		req, ok := c.requestForDiscoveredHash(
+			dht.DiscoveredHash{InfoHash: hash, Source: dht.QGetPeers, From: from},
+		)
 		assert.True(t, ok)
 		assert.Equal(t, nodeHasPeersForHash{infoHash: hash, node: closestAddr}, req)
 	})
@@ -63,7 +65,9 @@ func TestRequestForDiscoveredHash(t *testing.T) {
 		hash := protocol.RandomNodeID()
 		table.EXPECT().GetClosestNodes(hash).Return(nil)
 
-		req, ok := c.requestForDiscoveredHash(dht.DiscoveredHash{InfoHash: hash, Source: dht.QGetPeers, From: from})
+		req, ok := c.requestForDiscoveredHash(
+			dht.DiscoveredHash{InfoHash: hash, Source: dht.QGetPeers, From: from},
+		)
 		assert.True(t, ok)
 		assert.Equal(t, nodeHasPeersForHash{infoHash: hash, node: from}, req)
 	})

@@ -41,7 +41,8 @@ func New(p Params) Result {
 
 	return Result{
 		Requester: requestLimiter{
-			// the per-IP limiter waits outside the concurrency limiter, so that waiting doesn't hold a connection slot
+			// the per-IP limiter waits outside the concurrency limiter, so that waiting doesn't hold a
+			// connection slot
 			requester: newConcurrencyLimiter(requestLogger{
 				requester: collector,
 				// we make way to many requests to usefully log everything, but having a sample is
@@ -50,7 +51,12 @@ func New(p Params) Result {
 					return zapcore.NewSamplerWithOptions(core, time.Minute, 10, 0)
 				})).Named("meta_info_requester"),
 			}, p.Config.MaxConcurrentConnections),
-			limiter: concurrency.NewKeyedLimiter[netip.Addr](rate.Every(time.Second/2), 4, 100_000, time.Second*20),
+			limiter: concurrency.NewKeyedLimiter[netip.Addr](
+				rate.Every(time.Second/2),
+				4,
+				100_000,
+				time.Second*20,
+			),
 		},
 		RequestDuration:     collector.requestDuration,
 		RequestSuccessTotal: collector.requestSuccessTotal,

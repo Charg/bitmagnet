@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
-
 	"github.com/stretchr/testify/assert"
 )
 

@@ -64,7 +64,12 @@ func New(p Params) Result {
 					lastResponses: lastResponses,
 				},
 			},
-			queryLimiter: concurrency.NewKeyedLimiter[netip.Addr](rate.Every(time.Second), 4, 100_000, time.Second*20),
+			queryLimiter: concurrency.NewKeyedLimiter[netip.Addr](
+				rate.Every(time.Second),
+				4,
+				100_000,
+				time.Second*20,
+			),
 		}
 		if err := s.start(); err != nil {
 			return nil, fmt.Errorf("could not start server: %w", err)

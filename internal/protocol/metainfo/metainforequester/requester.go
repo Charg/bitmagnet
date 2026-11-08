@@ -395,6 +395,7 @@ func readAllPieces(r io.Reader, metadataSize uint) ([]byte, error) {
 		}
 
 		copy(metadataBytes[start:end], metadataPiece)
+
 		seen[piece] = true
 		receivedPieces++
 	}

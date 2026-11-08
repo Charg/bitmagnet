@@ -21,7 +21,10 @@ func TestUnmarshalNodeAddrIPv6(t *testing.T) {
 
 	var na NodeAddr
 
-	require.NoError(t, na.UnmarshalBinary([]byte("\x20\x01\x0d\xb8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x1a\xe1")))
+	require.NoError(
+		t,
+		na.UnmarshalBinary([]byte("\x20\x01\x0d\xb8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x1a\xe1")),
+	)
 	assert.Equal(t, "2001:db8::1", na.IP.String())
 	assert.Equal(t, 6881, na.Port)
 }

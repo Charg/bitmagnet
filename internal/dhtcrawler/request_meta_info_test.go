@@ -36,7 +36,7 @@ type fakeBlocker struct {
 	blocked []protocol.ID
 }
 
-func (f *fakeBlocker) Filter(_ context.Context, h []protocol.ID) ([]protocol.ID, error) {
+func (*fakeBlocker) Filter(_ context.Context, h []protocol.ID) ([]protocol.ID, error) {
 	return h, nil
 }
 
@@ -49,7 +49,7 @@ func (f *fakeBlocker) Block(_ context.Context, h []protocol.ID, _ bool) error {
 	return nil
 }
 
-func (f *fakeBlocker) Flush(context.Context) error { return nil }
+func (*fakeBlocker) Flush(context.Context) error { return nil }
 
 func testAddr(port uint16) netip.AddrPort {
 	return netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), port)
@@ -110,7 +110,11 @@ func TestDoRequestMetaInfo(t *testing.T) {
 		}
 
 		start := time.Now()
-		_, err := c.doRequestMetaInfo(context.Background(), protocol.ID{}, []netip.AddrPort{testAddr(1), testAddr(2)})
+		_, err := c.doRequestMetaInfo(
+			context.Background(),
+			protocol.ID{},
+			[]netip.AddrPort{testAddr(1), testAddr(2)},
+		)
 		require.NoError(t, err)
 		assert.Less(t, time.Since(start), requestMetaInfoStagger)
 	})
