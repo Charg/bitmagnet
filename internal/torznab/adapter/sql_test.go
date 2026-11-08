@@ -63,7 +63,9 @@ func searchRequestSQL(t *testing.T, req torznab.SearchRequest) string {
 	reqOptions, err := searchRequestToQueryOptions(req)
 	require.NoError(t, err)
 
-	options := append([]query.Option{search.TorrentContentDefaultOption(), query.WithTotalCount(false)}, reqOptions...)
+	options := append(
+		[]query.Option{search.TorrentContentDefaultOption(), query.WithTotalCount(false)},
+		reqOptions...)
 	_, err = s.TorrentContent(context.Background(), options...)
 	require.NoError(t, err)
 

@@ -138,6 +138,10 @@ linters:
       - linters:
           - unused
         path: internal/protocol/dht/ktable/(.+)\.go
+      # tests for release name parsing and title matching need non-Latin (e.g. CJK) inputs
+      - linters:
+          - gosmopolitan
+        path: _test\.go
     paths:
       - third_party$
       - builtin$

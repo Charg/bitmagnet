@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//nolint:gosmopolitan
 func TestAppQueryToTsquery(t *testing.T) {
 	t.Parallel()
 

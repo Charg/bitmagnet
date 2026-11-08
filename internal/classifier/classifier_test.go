@@ -303,7 +303,11 @@ func TestClassifier(t *testing.T) {
 					Return(tmdb.SearchTvResponse{
 						Results: []tmdb.SearchTvResult{
 							{ID: 1, Name: "Vigilantes", OriginalName: "ヴィジランテ"},
-							{ID: 65930, Name: "My Hero Academia", OriginalName: "僕のヒーローアカデミア"},
+							{
+								ID:           65930,
+								Name:         "My Hero Academia",
+								OriginalName: "僕のヒーローアカデミア",
+							},
 						},
 					}, nil)
 				mocks.tmdbClient.On(
@@ -319,7 +323,12 @@ func TestClassifier(t *testing.T) {
 						Name:         "Vigilantes",
 						OriginalName: "ヴィジランテ",
 						AlternativeTitles: tmdb.TvAlternativeTitles{
-							Results: []tmdb.AlternativeTitle{{Iso3166_1: "JP", Title: "Vigilante: Boku no Hero Academia Illegals"}},
+							Results: []tmdb.AlternativeTitle{
+								{
+									Iso3166_1: "JP",
+									Title:     "Vigilante: Boku no Hero Academia Illegals",
+								},
+							},
 						},
 					}, nil)
 				mocks.tmdbClient.On(
@@ -335,7 +344,9 @@ func TestClassifier(t *testing.T) {
 						Name:         "My Hero Academia",
 						OriginalName: "僕のヒーローアカデミア",
 						AlternativeTitles: tmdb.TvAlternativeTitles{
-							Results: []tmdb.AlternativeTitle{{Iso3166_1: "JP", Title: "Boku no Hero Academia"}},
+							Results: []tmdb.AlternativeTitle{
+								{Iso3166_1: "JP", Title: "Boku no Hero Academia"},
+							},
 						},
 					}, nil)
 			},
@@ -347,15 +358,17 @@ func TestClassifier(t *testing.T) {
 					VideoResolution: model.NewNullVideoResolution(model.VideoResolutionV1080p),
 				},
 				Content: &model.Content{
-					Type:          model.ContentTypeTvShow,
-					Source:        "tmdb",
-					ID:            "65930",
-					Title:         "My Hero Academia",
-					OriginalTitle: model.NewNullString("僕のヒーローアカデミア"),
-					Popularity:    model.NewNullFloat32(0),
-					VoteAverage:   model.NewNullFloat32(0),
-					VoteCount:     model.NewNullUint(0),
-					Collections:   []model.ContentCollection{},
+					Type:   model.ContentTypeTvShow,
+					Source: "tmdb",
+					ID:     "65930",
+					Title:  "My Hero Academia",
+					OriginalTitle: model.NewNullString(
+						"僕のヒーローアカデミア",
+					),
+					Popularity:  model.NewNullFloat32(0),
+					VoteAverage: model.NewNullFloat32(0),
+					VoteCount:   model.NewNullUint(0),
+					Collections: []model.ContentCollection{},
 				},
 			},
 		},
@@ -391,21 +404,27 @@ func TestClassifier(t *testing.T) {
 							{ID: 4, Name: "Unrelated Four"},
 						},
 					}, nil)
-				// only the top 3 results are checked for alternative titles, and a missing result is skipped:
+				// only the top 3 results are checked for alternative titles, and a missing result is
+				// skipped:
 				for _, id := range []int64{1, 3} {
 					mocks.tmdbClient.On(
 						"TvDetails",
 						matchContext,
 						tmdb.TvDetailsRequest{
-							SeriesID:         id,
-							AppendToResponse: []string{"external_ids", "alternative_titles"},
+							SeriesID: id,
+							AppendToResponse: []string{
+								"external_ids",
+								"alternative_titles",
+							},
 						},
 					).
 						Return(tmdb.TvDetailsResponse{
 							ID:   id,
 							Name: "Unrelated",
 							AlternativeTitles: tmdb.TvAlternativeTitles{
-								Results: []tmdb.AlternativeTitle{{Title: "Something Else Entirely"}},
+								Results: []tmdb.AlternativeTitle{
+									{Title: "Something Else Entirely"},
+								},
 							},
 						}, nil)
 				}
@@ -478,7 +497,9 @@ func TestClassifier(t *testing.T) {
 						ReleaseDate:   "2014-07-30",
 						AlternativeTitles: tmdb.MovieAlternativeTitles{
 							// matched after transliteration of the Cyrillic title:
-							Titles: []tmdb.AlternativeTitle{{Iso3166_1: "RU", Title: "Стражи Галактики"}},
+							Titles: []tmdb.AlternativeTitle{
+								{Iso3166_1: "RU", Title: "Стражи Галактики"},
+							},
 						},
 					}, nil)
 			},

@@ -56,7 +56,8 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 			query.OrderBy(order.Clauses(search.OrderDirectionDescending)...))
 	} else if r.IMDBID.Valid || r.TMDBID.Valid || r.TVDBID.Valid {
 		// an ID search can have many matches, so put the best seeded first so they fall within the first page;
-		// other searches without a query (e.g. RSS) keep the default newest-first order, which is also cheaper to sort
+		// other searches without a query (e.g. RSS) keep the default newest-first order, which is also cheaper
+		// to sort
 		options = append(options, query.OrderBy(seedersOrder()...))
 	}
 

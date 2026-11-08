@@ -198,7 +198,8 @@ func isWordByte(b byte) bool {
 }
 
 func parseTitleYearEpisodes(input string) (string, model.Year, model.Episodes, string, error) {
-	if idx := titleEpisodesRegex.FindStringSubmatchIndex(input); idx != nil && !seasonNumberTruncated(input, idx[8:12]) {
+	if idx := titleEpisodesRegex.FindStringSubmatchIndex(input); idx != nil &&
+		!seasonNumberTruncated(input, idx[8:12]) {
 		match := submatches(input, idx)
 		title, match := widenEpisodesMatch(input, match[1], match)
 		year := model.Year(0)

@@ -33,7 +33,10 @@ func TestStripReleaseNameBanner(t *testing.T) {
 		{"[SubsPlease] Sousou no Frieren - 12 (1080p)", "[SubsPlease] Sousou no Frieren - 12 (1080p)"},
 		{"The.Last.of.Us.S02E03.1080p[EZTVx.to].mkv", "The.Last.of.Us.S02E03.1080p[EZTVx.to].mkv"},
 		{"葬送のフリーレン 第05話", "葬送のフリーレン 第05話"},
-		{"一叠间漫画咖啡屋生活 - S01E09 - [三明治摆烂组][H265 10bit 1080P].mkv", "一叠间漫画咖啡屋生活 - S01E09 - [三明治摆烂组][H265 10bit 1080P].mkv"},
+		{
+			"一叠间漫画咖啡屋生活 - S01E09 - [三明治摆烂组][H265 10bit 1080P].mkv",
+			"一叠间漫画咖啡屋生活 - S01E09 - [三明治摆烂组][H265 10bit 1080P].mkv",
+		},
 		{"魔戒：力量之戒_S02E03_大鷹與王位.mp4", "魔戒：力量之戒_S02E03_大鷹與王位.mp4"},
 		{"辐射S02E03.Fallout.S02E03.1080P", "Fallout.S02E03.1080P"},
 		{"流人.Slow.Horses.S06E01", "Slow.Horses.S06E01"},

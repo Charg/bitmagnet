@@ -166,7 +166,11 @@ func EpisodesMatchToEpisodes(match []string) Episodes {
 				// a list of seasons
 				includedSeasons := strings.Split(match[1], ",")
 				for _, season := range includedSeasons {
-					seasonIndex, _ := strconv.ParseInt(strings.TrimLeft(strings.TrimSpace(season), "sS "), 10, 16)
+					seasonIndex, _ := strconv.ParseInt(
+						strings.TrimLeft(strings.TrimSpace(season), "sS "),
+						10,
+						16,
+					)
 					episodes = episodes.AddSeason(int(seasonIndex))
 				}
 			default:
@@ -188,7 +192,11 @@ func EpisodesMatchToEpisodes(match []string) Episodes {
 				// a list of episodes
 				includedEpisodes := strings.Split(match[5], ",")
 				for _, episode := range includedEpisodes {
-					episodeIndex, _ := strconv.ParseInt(strings.TrimLeft(strings.TrimSpace(episode), "eE "), 10, 16)
+					episodeIndex, _ := strconv.ParseInt(
+						strings.TrimLeft(strings.TrimSpace(episode), "eE "),
+						10,
+						16,
+					)
 					episodes = episodes.AddEpisode(int(seasonStart), int(episodeIndex))
 				}
 			default:

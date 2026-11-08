@@ -130,7 +130,8 @@ func TestParseVideoContent(t *testing.T) {
 			year:        2003,
 		},
 		{
-			input:       "【高清剧集网发布 www.DDHDTV.com】芝加哥警署[第03集][无字片源].Chicago.P.D.S14.1080p.Peacock.WEB-DL.DDP.5.1.H.264-BlackTV",
+			input: "【高清剧集网发布 www.DDHDTV.com】芝加哥警署[第03集][无字片源]." +
+				"Chicago.P.D.S14.1080p.Peacock.WEB-DL.DDP.5.1.H.264-BlackTV",
 			contentType: tvShow,
 			title:       "Chicago P.D.",
 			episodes:    model.Episodes{14: {}},
@@ -199,7 +200,8 @@ func TestParseVideoContent(t *testing.T) {
 			episodes:    model.Episodes{2: {10: {}}},
 		},
 		{
-			input:       "[Erai-raws] Ore dake Level Up na Ken Season 2 - 03 [1080p CR WEBRip HEVC EAC3][MultiSub][256751B7].mkv",
+			input: "[Erai-raws] Ore dake Level Up na Ken Season 2 - 03 " +
+				"[1080p CR WEBRip HEVC EAC3][MultiSub][256751B7].mkv",
 			contentType: tvShow,
 			title:       "Ore dake Level Up na Ken",
 			episodes:    model.Episodes{2: {3: {}}},

@@ -36,7 +36,8 @@ var siteBannerRegex = rex.New(
 		rex.Group.Define(
 			rex.Group.Composite(
 				rex.Group.Define(
-					rex.Group.Composite(keywords.MustNewRexTokensFromKeywords("www")...).NonCaptured(),
+					rex.Group.Composite(keywords.MustNewRexTokensFromKeywords("www")...).
+						NonCaptured(),
 					rex.Chars.Single('.'),
 					domainToken,
 				).NonCaptured(),
@@ -44,7 +45,23 @@ var siteBannerRegex = rex.New(
 					domainLabelToken,
 					rex.Chars.Single('.'),
 					rex.Group.Composite(keywords.MustNewRexTokensFromKeywords(
-						"com", "org", "net", "info", "tv", "cc", "io", "xyz", "ws", "se", "ru", "pl", "nz", "li", "cx", "la", "sx",
+						"com",
+						"org",
+						"net",
+						"info",
+						"tv",
+						"cc",
+						"io",
+						"xyz",
+						"ws",
+						"se",
+						"ru",
+						"pl",
+						"nz",
+						"li",
+						"cx",
+						"la",
+						"sx",
 					)...).NonCaptured(),
 				).NonCaptured(),
 			).NonCaptured(),

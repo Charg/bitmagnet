@@ -9,9 +9,12 @@ import (
 )
 
 const (
-	sqlIMDBMovie = `"content_attributes"."content_type" = 'movie' AND "content_attributes"."content_type" = "content"."type"`
-	sqlIMDBTV    = `"content_attributes"."content_type" = 'tv_show' AND "content_attributes"."content_type" = "content"."type"`
-	sqlIMDBAny   = `EXISTS (SELECT * FROM "content_attributes" WHERE "content_attributes"."content_type" = "content"."type"`
+	sqlIMDBMovie = `"content_attributes"."content_type" = 'movie' AND ` +
+		`"content_attributes"."content_type" = "content"."type"`
+	sqlIMDBTV = `"content_attributes"."content_type" = 'tv_show' AND ` +
+		`"content_attributes"."content_type" = "content"."type"`
+	sqlIMDBAny = `EXISTS (SELECT * FROM "content_attributes" WHERE ` +
+		`"content_attributes"."content_type" = "content"."type"`
 	sqlTMDBMovie = `"content"."type" = 'movie' AND "content"."source" = 'tmdb' AND "content"."id" = '496243'`
 	sqlTMDBTV    = `"content"."type" = 'tv_show' AND "content"."source" = 'tmdb' AND "content"."id" = '250923'`
 	sqlTMDBAny   = `("content"."source" = 'tmdb' AND "content"."id" = '496243')`

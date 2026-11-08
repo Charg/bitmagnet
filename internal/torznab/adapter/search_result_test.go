@@ -66,7 +66,11 @@ func TestTorrentContentResultItemIMDBAttr(t *testing.T) {
 
 			item := torrentContentResultItemToTorznabResultItem(resultItem(
 				model.ContentTypeMovie,
-				contentWithIDs(model.ContentTypeMovie, "496243", map[string]string{"imdb": testCase.imdbID}),
+				contentWithIDs(
+					model.ContentTypeMovie,
+					"496243",
+					map[string]string{"imdb": testCase.imdbID},
+				),
 			))
 
 			assert.Equal(t, testCase.expected, attrValues(item, torznab.AttrImdb))
@@ -125,7 +129,10 @@ func TestTorrentContentResultItemCategories(t *testing.T) {
 	animation := model.ContentCollection{Type: "genre", Source: "tmdb", ID: "16", Name: "Animation"}
 	drama := model.ContentCollection{Type: "genre", Source: "tmdb", ID: "18", Name: "Drama"}
 
-	withResolution := func(item search.TorrentContentResultItem, res model.VideoResolution) search.TorrentContentResultItem {
+	withResolution := func(
+		item search.TorrentContentResultItem,
+		res model.VideoResolution,
+	) search.TorrentContentResultItem {
 		item.VideoResolution = model.NewNullVideoResolution(res)
 		return item
 	}
@@ -169,8 +176,11 @@ func TestTorrentContentResultItemCategories(t *testing.T) {
 			expected: []string{"2000", "2045"},
 		},
 		{
-			name:     "hd tv show",
-			item:     withResolution(resultItem(model.ContentTypeTvShow, tvContent("en", drama)), model.VideoResolutionV720p),
+			name: "hd tv show",
+			item: withResolution(
+				resultItem(model.ContentTypeTvShow, tvContent("en", drama)),
+				model.VideoResolutionV720p,
+			),
 			expected: []string{"5000", "5040"},
 		},
 		{
