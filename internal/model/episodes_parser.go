@@ -43,13 +43,13 @@ var seasonRangeSeparatorToken = rex.Group.Composite(
 	).NonCaptured(),
 ).NonCaptured()
 
-func rangeToken(runes string, separator dialect.Token) dialect.Token {
+func rangeToken(runes string, separator dialect.Token, maxDigits int) dialect.Token {
 	return rex.Group.Define(
-		rex.Group.Define(rex.Chars.Digits().Repeat().Between(1, 2)),
+		rex.Group.Define(rex.Chars.Digits().Repeat().Between(1, maxDigits)),
 		rex.Group.Composite(
 			rex.Group.Define(
 				separator,
-				rex.Group.Define(rex.Chars.Digits().Repeat().Between(1, 2)),
+				rex.Group.Define(rex.Chars.Digits().Repeat().Between(1, maxDigits)),
 			).NonCaptured(),
 			rex.Group.Define(
 				rex.Chars.Whitespace().Repeat().ZeroOrOne(),
@@ -78,7 +78,8 @@ var seasonToken = rex.Group.Define(
 			rex.Chars.Whitespace().Repeat().ZeroOrOne(),
 		).NonCaptured(),
 	).NonCaptured(),
-	rangeToken("sS", seasonRangeSeparatorToken),
+	// up to 3 digits for long-running shows, e.g. "S151E04":
+	rangeToken("sS", seasonRangeSeparatorToken, 3),
 	rex.Chars.Whitespace().Repeat().ZeroOrOne(),
 ).NonCaptured()
 
@@ -87,7 +88,7 @@ var episodeToken = rex.Group.Define(
 		keywords.MustNewRexTokensFromKeywords("episode", "ep", "e")...,
 	).NonCaptured(),
 	rex.Chars.Whitespace().Repeat().ZeroOrOne(),
-	rangeToken("eE", rangeSeparatorToken("eE")),
+	rangeToken("eE", rangeSeparatorToken("eE"), 2),
 ).NonCaptured()
 
 // dashEpisodeToken matches an episode number following a season, separated by a dash, as in "S2 - 05 (1080p)".

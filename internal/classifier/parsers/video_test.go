@@ -261,6 +261,25 @@ func TestParseVideoContent(t *testing.T) {
 			title:       "The Bear",
 			episodes:    model.Episodes{2: {}},
 		},
+		// 3 digit seasons
+		{
+			input:       "House.Hunters.International.S151E04.Newlywed.Games.in.Geneva.WEBRip.x264-CAFFEiNE[eztv].mkv",
+			contentType: tvShow,
+			title:       "House Hunters International",
+			episodes:    model.Episodes{151: {4: {}}},
+		},
+		{
+			input:       "House.Hunters.International.S150E01.WEBRip.x264-CAFFEiNE[eztv].mkv",
+			contentType: tvShow,
+			title:       "House Hunters International",
+			episodes:    model.Episodes{150: {1: {}}},
+		},
+		{
+			input:       "House.Hunters.International.S129E07.WEBRip.x264-CAFFEiNE[eztv].mkv",
+			contentType: tvShow,
+			title:       "House Hunters International",
+			episodes:    model.Episodes{129: {7: {}}},
+		},
 		// year-like numbers after "Season" are not seasons
 		{
 			input:       "PL.Review.Goals.of.the.Season.2022-23.BTSportHD.1080p25.IPTV.mkv",

@@ -28,6 +28,8 @@ func TestParseEpisodes(t *testing.T) {
 		{"Season.3", Episodes{3: {}}},
 		{"Season_3", Episodes{3: {}}},
 		{"S2 - 05", Episodes{2: {5: {}}}},
+		{"S151E04", Episodes{151: {4: {}}}},
+		{"S100", Episodes{100: {}}},
 		{"S2 - 05v2", Episodes{2: {5: {}}}},
 		{"S2 - 105", Episodes{2: {105: {}}}},
 		{"Season 2 - 03", Episodes{2: {3: {}}}},
