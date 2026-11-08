@@ -2,6 +2,8 @@ package parsers
 
 import (
 	"strconv"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/classifier/classification"
 	"github.com/bitmagnet-io/bitmagnet/internal/keywords"
@@ -59,6 +61,11 @@ var titleEpisodesRegex = rex.New(
 		rex.Group.NonCaptured(titleTokens...),
 		model.EpisodesToken,
 	),
+).MustCompile()
+
+var leadingEpisodesRegex = rex.New(
+	rex.Chars.Begin(),
+	model.EpisodesToken,
 ).MustCompile()
 
 var multiRegex = keywords.MustNewRegexFromKeywords("multi", "dual")
@@ -135,9 +142,31 @@ func parseTitle(input string) (title string, rest string, err error) {
 	return "", "", classification.ErrUnmatched
 }
 
+// widenEpisodesMatch handles the greedy title match consuming the start of a range,
+// e.g. "Show.S01-S05" matching the title "Show.S01-" and the episodes "S05":
+// it returns the earliest episodes match within the title that runs into the original episodes match.
+func widenEpisodesMatch(input string, title string, match []string) (string, []string) {
+	for i := 1; i < len(title); i++ {
+		if (title[i] != 's' && title[i] != 'S') || isWordByte(title[i-1]) {
+			continue
+		}
+
+		if m := leadingEpisodesRegex.FindStringSubmatch(input[i:]); m != nil && i+len(m[0]) > len(title) {
+			return input[:i], append([]string{input[:i+len(m[0])], input[:i]}, m[1:]...)
+		}
+	}
+
+	return title, match
+}
+
+func isWordByte(b byte) bool {
+	return b >= utf8.RuneSelf || unicode.IsLetter(rune(b)) || unicode.IsDigit(rune(b))
+}
+
 func parseTitleYearEpisodes(input string) (string, model.Year, model.Episodes, string, error) {
 	if match := titleEpisodesRegex.FindStringSubmatch(input); match != nil {
-		title := match[1]
+		var title string
+		title, match = widenEpisodesMatch(input, match[1], match)
 		year := model.Year(0)
 
 		if t, y, _, err := parseTitleYear(title); err == nil {
