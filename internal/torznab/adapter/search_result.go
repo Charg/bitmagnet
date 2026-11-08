@@ -71,10 +71,6 @@ func torrentContentResultItemToTorznabResultItem(item search.TorrentContentResul
 			AttrValue: item.Torrent.MagnetURI(),
 		},
 		{
-			AttrName:  torznab.AttrCategory,
-			AttrValue: strconv.Itoa(categoryID),
-		},
-		{
 			AttrName:  torznab.AttrSize,
 			AttrValue: strconv.FormatUint(uint64(item.Torrent.Size), 10),
 		},
@@ -83,6 +79,14 @@ func torrentContentResultItemToTorznabResultItem(item search.TorrentContentResul
 			AttrValue: item.PublishedAt.Format(torznab.RssDateDefaultFormat),
 		},
 	}
+	// the parent category comes first, followed by any more specific subcategories
+	for _, id := range append([]int{categoryID}, subcategoryIDs(item)...) {
+		attrs = append(attrs, torznab.SearchResultItemTorznabAttr{
+			AttrName:  torznab.AttrCategory,
+			AttrValue: strconv.Itoa(id),
+		})
+	}
+
 	seeders := item.Torrent.Seeders()
 	leechers := item.Torrent.Leechers()
 
@@ -199,4 +203,46 @@ func torrentContentResultItemToTorznabResultItem(item search.TorrentContentResul
 		},
 		TorznabAttrs: attrs,
 	}
+}
+
+func subcategoryIDs(item search.TorrentContentResultItem) []int {
+	if !item.ContentType.Valid {
+		return nil
+	}
+
+	var sd, hd, uhd torznab.Category
+
+	var ids []int
+
+	switch item.ContentType.ContentType {
+	case model.ContentTypeMovie:
+		sd, hd, uhd = torznab.CategoryMoviesSD, torznab.CategoryMoviesHD, torznab.CategoryMoviesUHD
+	case model.ContentTypeTvShow:
+		sd, hd, uhd = torznab.CategoryTVSD, torznab.CategoryTVHD, torznab.CategoryTVUHD
+
+		if isAnime(item.Content) {
+			ids = append(ids, torznab.CategoryTVAnime.ID)
+		}
+	default:
+		return nil
+	}
+
+	if item.VideoResolution.Valid {
+		switch item.VideoResolution.VideoResolution {
+		case model.VideoResolutionV360p,
+			model.VideoResolutionV480p,
+			model.VideoResolutionV540p,
+			model.VideoResolutionV576p:
+			ids = append(ids, sd.ID)
+		case model.VideoResolutionV720p,
+			model.VideoResolutionV1080p,
+			model.VideoResolutionV1440p:
+			ids = append(ids, hd.ID)
+		case model.VideoResolutionV2160p,
+			model.VideoResolutionV4320p:
+			ids = append(ids, uhd.ID)
+		}
+	}
+
+	return ids
 }

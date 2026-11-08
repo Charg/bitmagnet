@@ -118,3 +118,95 @@ func TestTorrentContentResultItemIDAttrs(t *testing.T) {
 		})
 	}
 }
+
+func TestTorrentContentResultItemCategories(t *testing.T) {
+	t.Parallel()
+
+	animation := model.ContentCollection{Type: "genre", Source: "tmdb", ID: "16", Name: "Animation"}
+	drama := model.ContentCollection{Type: "genre", Source: "tmdb", ID: "18", Name: "Drama"}
+
+	withResolution := func(item search.TorrentContentResultItem, res model.VideoResolution) search.TorrentContentResultItem {
+		item.VideoResolution = model.NewNullVideoResolution(res)
+		return item
+	}
+
+	tvContent := func(lang model.Language, collections ...model.ContentCollection) model.Content {
+		content := contentWithIDs(model.ContentTypeTvShow, "1", nil)
+		content.OriginalLanguage = model.NewNullLanguage(lang)
+		content.Collections = collections
+
+		return content
+	}
+
+	for _, testCase := range []struct {
+		name     string
+		item     search.TorrentContentResultItem
+		expected []string
+	}{
+		{
+			name:     "unknown",
+			item:     search.TorrentContentResultItem{},
+			expected: []string{"8000"},
+		},
+		{
+			name:     "movie without resolution",
+			item:     resultItem(model.ContentTypeMovie, model.Content{}),
+			expected: []string{"2000"},
+		},
+		{
+			name:     "sd movie",
+			item:     withResolution(resultItem(model.ContentTypeMovie, model.Content{}), model.VideoResolutionV480p),
+			expected: []string{"2000", "2030"},
+		},
+		{
+			name:     "hd movie",
+			item:     withResolution(resultItem(model.ContentTypeMovie, model.Content{}), model.VideoResolutionV1080p),
+			expected: []string{"2000", "2040"},
+		},
+		{
+			name:     "uhd movie",
+			item:     withResolution(resultItem(model.ContentTypeMovie, model.Content{}), model.VideoResolutionV2160p),
+			expected: []string{"2000", "2045"},
+		},
+		{
+			name:     "hd tv show",
+			item:     withResolution(resultItem(model.ContentTypeTvShow, tvContent("en", drama)), model.VideoResolutionV720p),
+			expected: []string{"5000", "5040"},
+		},
+		{
+			name:     "anime",
+			item:     resultItem(model.ContentTypeTvShow, tvContent("ja", drama, animation)),
+			expected: []string{"5000", "5070"},
+		},
+		{
+			name: "uhd anime",
+			item: withResolution(
+				resultItem(model.ContentTypeTvShow, tvContent("ja", animation)), model.VideoResolutionV2160p,
+			),
+			expected: []string{"5000", "5070", "5045"},
+		},
+		{
+			name:     "japanese live action",
+			item:     resultItem(model.ContentTypeTvShow, tvContent("ja", drama)),
+			expected: []string{"5000"},
+		},
+		{
+			name:     "non-japanese animation",
+			item:     resultItem(model.ContentTypeTvShow, tvContent("en", animation)),
+			expected: []string{"5000"},
+		},
+		{
+			name:     "hd music",
+			item:     withResolution(resultItem(model.ContentTypeMusic, model.Content{}), model.VideoResolutionV1080p),
+			expected: []string{"3000"},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			item := torrentContentResultItemToTorznabResultItem(testCase.item)
+
+			assert.Equal(t, testCase.expected, attrValues(item, torznab.AttrCategory))
+		})
+	}
+}

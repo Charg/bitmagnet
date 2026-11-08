@@ -15,7 +15,11 @@ const (
 	sqlTMDBMovie = `"content"."type" = 'movie' AND "content"."source" = 'tmdb' AND "content"."id" = '496243'`
 	sqlTMDBTV    = `"content"."type" = 'tv_show' AND "content"."source" = 'tmdb' AND "content"."id" = '250923'`
 	sqlTMDBAny   = `("content"."source" = 'tmdb' AND "content"."id" = '496243')`
-	sqlTVDBTV    = `"content_attributes"."source" = 'tvdb' AND "content_attributes"."value" = '421069'`
+	sqlAnime     = `"content"."original_language" = 'ja'`
+	sqlAnimation = `"content_collections_content"."content_collection_type" = 'genre' AND ` +
+		`"content_collections_content"."content_collection_source" = 'tmdb' AND ` +
+		`"content_collections_content"."content_collection_id" = '16'`
+	sqlTVDBTV = `"content_attributes"."source" = 'tvdb' AND "content_attributes"."value" = '421069'`
 )
 
 func TestSearchRequestToQueryOptions(t *testing.T) {
@@ -91,6 +95,38 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 				`"content_attributes"."value" = 'tt26933824') OR (` + sqlTMDBTV + `) OR EXISTS (`,
 				sqlTVDBTV,
 			},
+		},
+		{
+			name: "tv search with anime category",
+			request: torznab.SearchRequest{
+				Type: torznab.FunctionTV,
+				Cats: []int{torznab.CategoryTVAnime.ID},
+			},
+			contains: []string{`"torrent_contents"."content_type" = 'tv_show'`, sqlAnime, sqlAnimation},
+		},
+		{
+			name: "generic search with anime category restricts to tv shows",
+			request: torznab.SearchRequest{
+				Type: torznab.FunctionSearch,
+				Cats: []int{torznab.CategoryTVAnime.ID},
+			},
+			contains: []string{`"torrent_contents"."content_type" = 'tv_show'`, sqlAnime, sqlAnimation},
+		},
+		{
+			name: "tv search with tv and anime categories matches either",
+			request: torznab.SearchRequest{
+				Type: torznab.FunctionTV,
+				Cats: []int{torznab.CategoryTV.ID, torznab.CategoryTVAnime.ID},
+			},
+			contains: []string{`"torrent_contents"."content_type" = 'tv_show' OR (`, sqlAnime, sqlAnimation},
+		},
+		{
+			name: "tv search with hd category does not filter anime",
+			request: torznab.SearchRequest{
+				Type: torznab.FunctionTV,
+				Cats: []int{torznab.CategoryTVHD.ID},
+			},
+			notContains: []string{sqlAnime},
 		},
 		{
 			name: "tv search with imdb id restricts to tv shows",

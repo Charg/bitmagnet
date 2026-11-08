@@ -121,6 +121,8 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 					catCriteria,
 					search.VideoResolutionCriteria(model.VideoResolutionV2160p),
 				)
+			case torznab.CategoryTVAnime.ID:
+				catCriteria = append(catCriteria, animeCriteria())
 			}
 		case torznab.CategoryXXX.Has(cat):
 			catCriteria = append(catCriteria, search.TorrentContentTypeCriteria(model.ContentTypeXxx))

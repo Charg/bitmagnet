@@ -47,3 +47,18 @@ func TestCapsSupportedParams(t *testing.T) {
 		})
 	}
 }
+
+func TestCapsCategoriesIncludeTVAnime(t *testing.T) {
+	t.Parallel()
+
+	var tv torznab.Category
+
+	for _, cat := range torznab.ProfileDefault.Caps().Categories.Categories {
+		if cat.ID == torznab.CategoryTV.ID {
+			tv = cat
+		}
+	}
+
+	assert.Contains(t, tv.Subcat, torznab.Subcategory{ID: 5070, Name: "TV/Anime"})
+	assert.True(t, torznab.CategoryTV.Has(5070))
+}
