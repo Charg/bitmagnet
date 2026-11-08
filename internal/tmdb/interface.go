@@ -134,6 +134,22 @@ type MovieDetailsResponse struct {
 	Video       bool    `json:"video"`
 	VoteAverage float32 `json:"vote_average"`
 	VoteCount   int64   `json:"vote_count"`
+	// AlternativeTitles is populated when "alternative_titles" is included in AppendToResponse.
+	AlternativeTitles MovieAlternativeTitles `json:"alternative_titles,omitempty"`
+}
+
+type AlternativeTitle struct {
+	Iso3166_1 string `json:"iso_3166_1"`
+	Title     string `json:"title"`
+	Type      string `json:"type"`
+}
+
+type MovieAlternativeTitles struct {
+	Titles []AlternativeTitle `json:"titles"`
+}
+
+type TvAlternativeTitles struct {
+	Results []AlternativeTitle `json:"results"`
 }
 
 type TvDetailsRequest struct {
@@ -235,6 +251,8 @@ type TvDetailsResponse struct {
 		TwitterID   string `json:"twitter_id"`
 		ID          int64  `json:"id,omitempty"`
 	} `json:"external_ids,omitempty"`
+	// AlternativeTitles is populated when "alternative_titles" is included in AppendToResponse.
+	AlternativeTitles TvAlternativeTitles `json:"alternative_titles,omitempty"`
 }
 
 type FindByIDRequest struct {

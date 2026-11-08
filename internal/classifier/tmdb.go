@@ -8,6 +8,11 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/tmdb"
 )
 
+// tmdbAlternativeTitlesMaxResults bounds the number of extra details requests made when no search result
+// matches on its primary titles. TMDB search matches alternative titles server-side (e.g. romanised anime titles),
+// so the correct result is usually amongst the first few even when its primary titles don't match the query.
+const tmdbAlternativeTitlesMaxResults = 3
+
 func (c executionContext) tmdbSearchMovie(title string, year model.Year) (model.Content, error) {
 	req := tmdb.SearchMovieRequest{
 		Query:        title,
@@ -31,10 +36,42 @@ func (c executionContext) tmdbSearchMovie(title string, year model.Year) (model.
 	)
 
 	if !ok {
-		return model.Content{}, classification.ErrUnmatched
+		return c.tmdbMatchMovieByAlternativeTitles(title, searchResult.Results)
 	}
 
 	return c.tmdbGetMovieByTMDBID(bestMatch.ID)
+}
+
+// tmdbMatchMovieByAlternativeTitles fetches details including alternative titles for the top search results,
+// returning the first result with a title matching the query.
+func (c executionContext) tmdbMatchMovieByAlternativeTitles(
+	title string,
+	results []tmdb.SearchMovieResult,
+) (model.Content, error) {
+	for _, result := range results[:min(len(results), tmdbAlternativeTitlesMaxResults)] {
+		d, err := c.tmdbClient.MovieDetails(c.Context, tmdb.MovieDetailsRequest{
+			ID:               result.ID,
+			AppendToResponse: []string{"alternative_titles"},
+		})
+		if err != nil {
+			if errors.Is(err, tmdb.ErrNotFound) {
+				continue
+			}
+
+			return model.Content{}, err
+		}
+
+		candidates := []string{d.Title, d.OriginalTitle}
+		for _, t := range d.AlternativeTitles.Titles {
+			candidates = append(candidates, t.Title)
+		}
+
+		if levenshteinIsMatch(title, candidates) {
+			return tmdb.MovieDetailsToMovieModel(d)
+		}
+	}
+
+	return model.Content{}, classification.ErrUnmatched
 }
 
 func (c executionContext) tmdbSearchTVShow(title string, year model.Year) (model.Content, error) {
@@ -60,10 +97,42 @@ func (c executionContext) tmdbSearchTVShow(title string, year model.Year) (model
 	)
 
 	if !ok {
-		return model.Content{}, classification.ErrUnmatched
+		return c.tmdbMatchTVShowByAlternativeTitles(title, searchResult.Results)
 	}
 
 	return c.tmdbGetTVShowByTMDBID(bestMatch.ID)
+}
+
+// tmdbMatchTVShowByAlternativeTitles fetches details including alternative titles for the top search results,
+// returning the first result with a title matching the query.
+func (c executionContext) tmdbMatchTVShowByAlternativeTitles(
+	title string,
+	results []tmdb.SearchTvResult,
+) (model.Content, error) {
+	for _, result := range results[:min(len(results), tmdbAlternativeTitlesMaxResults)] {
+		d, err := c.tmdbClient.TvDetails(c.Context, tmdb.TvDetailsRequest{
+			SeriesID:         result.ID,
+			AppendToResponse: []string{"external_ids", "alternative_titles"},
+		})
+		if err != nil {
+			if errors.Is(err, tmdb.ErrNotFound) {
+				continue
+			}
+
+			return model.Content{}, err
+		}
+
+		candidates := []string{d.Name, d.OriginalName}
+		for _, t := range d.AlternativeTitles.Results {
+			candidates = append(candidates, t.Title)
+		}
+
+		if levenshteinIsMatch(title, candidates) {
+			return tmdb.TvShowDetailsToTvShowModel(d)
+		}
+	}
+
+	return model.Content{}, classification.ErrUnmatched
 }
 
 func (c executionContext) tmdbGetMovieByTMDBID(id int64) (movie model.Content, err error) {

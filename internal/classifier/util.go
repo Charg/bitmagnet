@@ -33,6 +33,11 @@ func levenshteinFindBestMatch[T any](target string, items []T, getCandidates fun
 	return items[bestMatch], true
 }
 
+func levenshteinIsMatch(target string, candidates []string) bool {
+	distance := levenshteinFindMinDistance(target, candidates)
+	return distance >= 0 && distance <= levenshteinThreshold
+}
+
 func levenshteinFindMinDistance(target string, candidates []string) int {
 	normTarget := levenshteinNormalizeString(target)
 	triedCandidates := make(map[string]struct{}, len(candidates))
