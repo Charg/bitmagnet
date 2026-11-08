@@ -5,22 +5,50 @@ import (
 	"strings"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/keywords"
+	"github.com/bitmagnet-io/bitmagnet/internal/regex"
 	"github.com/hedhyw/rex/pkg/dialect"
 	"github.com/hedhyw/rex/pkg/rex"
 )
 
-func rangeToken(runes string) dialect.Token {
+// rangeSeparatorToken matches the separator of a range, e.g. "-", " - " or "-E".
+func rangeSeparatorToken(runes string) dialect.Token {
+	return rex.Group.Define(
+		rex.Chars.Whitespace().Repeat().ZeroOrOne(),
+		rex.Chars.Single('-'),
+		rex.Chars.Whitespace().Repeat().ZeroOrOne(),
+		rex.Group.NonCaptured(
+			rex.Chars.Runes(runes).Repeat().ZeroOrOne(),
+			rex.Chars.Whitespace().Repeat().ZeroOrOne(),
+		).Repeat().ZeroOrOne(),
+	).NonCaptured()
+}
+
+// seasonRangeSeparatorToken is like rangeSeparatorToken, except that a dash surrounded by whitespace
+// and not followed by an "S" is excluded, as "S2 - 05" denotes an episode rather than a range of seasons.
+var seasonRangeSeparatorToken = rex.Group.Composite(
+	rex.Group.Define(
+		rex.Chars.Whitespace().Repeat().ZeroOrOne(),
+		rex.Chars.Single('-'),
+		rex.Chars.Whitespace().Repeat().ZeroOrOne(),
+		rex.Chars.Runes("sS"),
+		rex.Chars.Whitespace().Repeat().ZeroOrOne(),
+	).NonCaptured(),
+	rex.Group.Define(
+		rex.Chars.Single('-'),
+		rex.Chars.Whitespace().Repeat().ZeroOrOne(),
+	).NonCaptured(),
+	rex.Group.Define(
+		rex.Chars.Whitespace(),
+		rex.Chars.Single('-'),
+	).NonCaptured(),
+).NonCaptured()
+
+func rangeToken(runes string, separator dialect.Token) dialect.Token {
 	return rex.Group.Define(
 		rex.Group.Define(rex.Chars.Digits().Repeat().Between(1, 2)),
 		rex.Group.Composite(
 			rex.Group.Define(
-				rex.Chars.Whitespace().Repeat().ZeroOrOne(),
-				rex.Chars.Single('-'),
-				rex.Chars.Whitespace().Repeat().ZeroOrOne(),
-				rex.Group.NonCaptured(
-					rex.Chars.Runes(runes).Repeat().ZeroOrOne(),
-					rex.Chars.Whitespace().Repeat().ZeroOrOne(),
-				).Repeat().ZeroOrOne(),
+				separator,
 				rex.Group.Define(rex.Chars.Digits().Repeat().Between(1, 2)),
 			).NonCaptured(),
 			rex.Group.Define(
@@ -40,10 +68,17 @@ func rangeToken(runes string) dialect.Token {
 
 var seasonToken = rex.Group.Define(
 	rex.Group.Composite(
-		keywords.MustNewRexTokensFromKeywords("season", "s")...,
+		// the full "season" keyword may also be dot or underscore separated, e.g. "Season.3":
+		rex.Group.Define(
+			rex.Group.Composite(keywords.MustNewRexTokensFromKeywords("season")...).NonCaptured(),
+			rex.Chars.Runes(" ._").Repeat().ZeroOrOne(),
+		).NonCaptured(),
+		rex.Group.Define(
+			rex.Group.Composite(keywords.MustNewRexTokensFromKeywords("s")...).NonCaptured(),
+			rex.Chars.Whitespace().Repeat().ZeroOrOne(),
+		).NonCaptured(),
 	).NonCaptured(),
-	rex.Chars.Whitespace().Repeat().ZeroOrOne(),
-	rangeToken("sS"),
+	rangeToken("sS", seasonRangeSeparatorToken),
 	rex.Chars.Whitespace().Repeat().ZeroOrOne(),
 ).NonCaptured()
 
@@ -52,12 +87,28 @@ var episodeToken = rex.Group.Define(
 		keywords.MustNewRexTokensFromKeywords("episode", "ep", "e")...,
 	).NonCaptured(),
 	rex.Chars.Whitespace().Repeat().ZeroOrOne(),
-	rangeToken("eE"),
+	rangeToken("eE", rangeSeparatorToken("eE")),
+).NonCaptured()
+
+// dashEpisodeToken matches an episode number following a season, separated by a dash, as in "S2 - 05 (1080p)".
+// The number may have a version suffix and must not be immediately followed by a letter or digit (e.g. "S2 - 1080p").
+var dashEpisodeToken = rex.Group.Define(
+	rex.Chars.Single('-'),
+	rex.Chars.Whitespace().Repeat().OneOrMore(),
+	rex.Group.Define(rex.Chars.Digits().Repeat().Between(1, 4)),
+	rex.Group.NonCaptured(
+		rex.Chars.Runes("vV"),
+		rex.Chars.Digits().Repeat().OneOrMore(),
+	).Repeat().ZeroOrOne(),
+	rex.Group.Composite(
+		regex.AnyNonWordChar(),
+		rex.Chars.End(),
+	).NonCaptured(),
 ).NonCaptured()
 
 var episodesRegularTokens = rex.Group.Define(
 	seasonToken,
-	episodeToken.Repeat().ZeroOrOne(),
+	rex.Group.Composite(episodeToken, dashEpisodeToken).NonCaptured().Repeat().ZeroOrOne(),
 ).NonCaptured()
 
 var episodesXFormatTokens = rex.Group.Define(
@@ -86,7 +137,7 @@ var episodesRegex = rex.New(
 ).MustCompile()
 
 func EpisodesMatchToEpisodes(match []string) Episodes {
-	if len(match) < 12 {
+	if len(match) < 13 {
 		return nil
 	}
 
@@ -96,7 +147,12 @@ func EpisodesMatchToEpisodes(match []string) Episodes {
 		// regular format
 		seasonStart, _ := strconv.ParseInt(match[2], 10, 16)
 
-		if match[5] == "" {
+		switch {
+		case match[9] != "":
+			// a single dash-separated episode
+			episode, _ := strconv.ParseInt(match[9], 10, 16)
+			episodes = episodes.AddEpisode(int(seasonStart), int(episode))
+		case match[5] == "":
 			// no episodes
 			switch {
 			case match[3] != "":
@@ -109,14 +165,14 @@ func EpisodesMatchToEpisodes(match []string) Episodes {
 				// a list of seasons
 				includedSeasons := strings.Split(match[1], ",")
 				for _, season := range includedSeasons {
-					seasonIndex, _ := strconv.ParseInt(season, 10, 16)
+					seasonIndex, _ := strconv.ParseInt(strings.TrimLeft(strings.TrimSpace(season), "sS "), 10, 16)
 					episodes = episodes.AddSeason(int(seasonIndex))
 				}
 			default:
 				// or just a single season
 				episodes = episodes.AddSeason(int(seasonStart))
 			}
-		} else {
+		default:
 			// episodes
 			episodeStart, _ := strconv.ParseInt(match[6], 10, 16)
 
@@ -131,7 +187,7 @@ func EpisodesMatchToEpisodes(match []string) Episodes {
 				// a list of episodes
 				includedEpisodes := strings.Split(match[5], ",")
 				for _, episode := range includedEpisodes {
-					episodeIndex, _ := strconv.ParseInt(episode, 10, 16)
+					episodeIndex, _ := strconv.ParseInt(strings.TrimLeft(strings.TrimSpace(episode), "eE "), 10, 16)
 					episodes = episodes.AddEpisode(int(seasonStart), int(episodeIndex))
 				}
 			default:
@@ -141,12 +197,12 @@ func EpisodesMatchToEpisodes(match []string) Episodes {
 		}
 	} else {
 		// x format
-		season, _ := strconv.ParseInt(match[9], 10, 16)
-		episodeStart, _ := strconv.ParseInt(match[10], 10, 16)
+		season, _ := strconv.ParseInt(match[10], 10, 16)
+		episodeStart, _ := strconv.ParseInt(match[11], 10, 16)
 		episodeEnd := episodeStart
 
-		if match[11] != "" {
-			episodeEnd, _ = strconv.ParseInt(match[11], 10, 16)
+		if match[12] != "" {
+			episodeEnd, _ = strconv.ParseInt(match[12], 10, 16)
 		}
 
 		for i := episodeStart; i <= episodeEnd; i++ {
@@ -158,5 +214,11 @@ func EpisodesMatchToEpisodes(match []string) Episodes {
 }
 
 func ParseEpisodes(input string) Episodes {
-	return EpisodesMatchToEpisodes(episodesRegex.FindStringSubmatch(input))
+	match := episodesRegex.FindStringSubmatch(input)
+	if match == nil {
+		return nil
+	}
+
+	// EpisodesMatchToEpisodes expects the match of EpisodesToken as its first element:
+	return EpisodesMatchToEpisodes(match[1:])
 }
