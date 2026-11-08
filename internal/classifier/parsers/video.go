@@ -206,7 +206,7 @@ func ParseTitleYearEpisodes(
 }
 
 func ParseVideoContent(torrent model.Torrent, result classification.Result) (classification.ContentAttributes, error) {
-	title, year, episodes, rest, err := ParseTitleYearEpisodes(result.ContentType, torrent.Name)
+	title, year, episodes, rest, err := ParseTitleYearEpisodes(result.ContentType, stripReleaseNameBanner(torrent.Name))
 	if err != nil {
 		if !result.ContentType.Valid {
 			return classification.ContentAttributes{}, err

@@ -80,6 +80,67 @@ func TestParseVideoContent(t *testing.T) {
 			title:       "Pokemon",
 			episodes:    model.Episodes{7: {}, 8: {}, 9: {}},
 		},
+		// site-name prefixes
+		{
+			input:       "www.UIndex.org    -    Ted Lasso S02E07 Headspace 1080p ATVP WEB-DL DDP5 1 Atmos H 264-FLUX",
+			contentType: tvShow,
+			title:       "Ted Lasso",
+			episodes:    model.Episodes{2: {7: {}}},
+		},
+		{
+			input:       "www.Torrenting.com - The Rookie S07E06 The Gala 1080p AMZN WEB-DL DDP5 1 H 264-FLUX",
+			contentType: tvShow,
+			title:       "The Rookie",
+			episodes:    model.Episodes{7: {6: {}}},
+		},
+		{
+			input:       "www.SceneTime.com  - Saturday.Night.Live.S43E01.1080p.WEB.x264-TBS",
+			contentType: tvShow,
+			title:       "Saturday Night Live",
+			episodes:    model.Episodes{43: {1: {}}},
+		},
+		{
+			input:       "WWW.SCENETIME.COM - Saturday.Night.Live.S43E01.1080p.WEB.x264-TBS",
+			contentType: tvShow,
+			title:       "Saturday Night Live",
+			episodes:    model.Episodes{43: {1: {}}},
+		},
+		{
+			input:       "Torrenting.com - The Rookie S07E06 The Gala 1080p AMZN WEB-DL DDP5 1 H 264-FLUX",
+			contentType: tvShow,
+			title:       "The Rookie",
+			episodes:    model.Episodes{7: {6: {}}},
+		},
+		{
+			input:       "www.UIndex.org    -    The.Fantastic.Four.First.Steps.2025.1080p.WEB.h264-ETHEL",
+			contentType: movie,
+			title:       "The Fantastic Four First Steps",
+			year:        2025,
+		},
+		{
+			input:       "[Ex-torrenty.org]Nobody.Wants.This.S03.MULTi.1080p.WEB-DL.H264.DDP5.1.Atmos-K83",
+			contentType: tvShow,
+			title:       "Nobody Wants This",
+			episodes:    model.Episodes{3: {}},
+		},
+		{
+			input:       "【高清影视之家发布 www.HDBTHD.com】防弹武僧[中文字幕].Bulletproof.Monk.2003.BluRay.1080p.AAC.x264-DreamHD",
+			contentType: movie,
+			title:       "Bulletproof Monk",
+			year:        2003,
+		},
+		{
+			input:       "【高清剧集网发布 www.DDHDTV.com】芝加哥警署[第03集][无字片源].Chicago.P.D.S14.1080p.Peacock.WEB-DL.DDP.5.1.H.264-BlackTV",
+			contentType: tvShow,
+			title:       "Chicago P.D.",
+			episodes:    model.Episodes{14: {}},
+		},
+		{
+			input:       "The.Last.of.Us.S02E03.1080p.WEB.H264-SuccessfulCrab[EZTVx.to].mkv",
+			contentType: tvShow,
+			title:       "The Last of Us",
+			episodes:    model.Episodes{2: {3: {}}},
+		},
 		// "S2 - 05" is season 2 episode 5, not a season range
 		{
 			input:       "[SubsPlease] Sousou no Frieren S2 - 05 (720p) [6FD1E83B].mkv",
