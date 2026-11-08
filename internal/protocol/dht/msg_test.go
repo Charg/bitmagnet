@@ -253,3 +253,19 @@ func TestBep51EmptySampleField(t *testing.T) {
 	c.Assert(samples, qt.Not(qt.IsNil))
 	c.Assert(*samples, qt.HasLen, 0)
 }
+
+func TestUnmarshalMsgMalformedCompactAddr(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range []string{
+		"d2:ip1:x1:t2:aa1:y1:re",
+		"d2:ip0:1:t2:aa1:y1:re",
+		"d1:rd2:id20:aaaaaaaaaaaaaaaaaaaa6:valuesl1:xee1:t2:aa1:y1:re",
+	} {
+		var m Msg
+
+		require.NotPanics(t, func() {
+			assert.Error(t, bencode.Unmarshal([]byte(p), &m), p)
+		}, p)
+	}
+}

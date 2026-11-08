@@ -97,6 +97,13 @@ func (s *server) read(ctx context.Context) {
 }
 
 func (s *server) handleDatagram(ctx context.Context, data []byte, from netip.AddrPort) {
+	// a malformed packet must never be able to take down the process
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Warnw("recovered from panic handling datagram", "from", from, "panic", r)
+		}
+	}()
+
 	var msg dht.Msg
 
 	if err := bencode.Unmarshal(data, &msg); err != nil {
