@@ -1,7 +1,9 @@
 package parsers
 
 import (
+	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/keywords"
 	"github.com/bitmagnet-io/bitmagnet/internal/regex"
@@ -94,7 +96,26 @@ var cjkPrefixRegex = rex.New(
 // stripReleaseNameBanner removes leading site banners and CJK titles preceding a Latin title from a release name.
 func stripReleaseNameBanner(name string) string {
 	name = siteBannerRegex.ReplaceAllString(name, "")
-	name = cjkPrefixRegex.ReplaceAllString(name, "$1")
+
+	if match := cjkPrefixRegex.FindStringSubmatchIndex(name); match != nil {
+		if latinTitle, ok := skipLeadingEpisodes(name[match[2]:]); ok {
+			name = latinTitle
+		}
+	}
 
 	return name
+}
+
+// skipLeadingEpisodes skips any episodes token (and following separators) at the start of the input,
+// as in "辐射S02E03.Fallout.S02E03"; it reports whether a Latin title follows.
+func skipLeadingEpisodes(input string) (string, bool) {
+	if match := leadingEpisodesRegex.FindStringIndex(input); match != nil {
+		input = strings.TrimLeftFunc(input[match[1]:], func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+		})
+	}
+
+	r, _ := utf8.DecodeRuneInString(input)
+
+	return input, unicode.Is(unicode.Latin, r)
 }
