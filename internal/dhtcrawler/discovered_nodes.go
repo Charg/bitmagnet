@@ -47,6 +47,15 @@ func newSeenNodes() *seenNodes {
 	}
 }
 
+// seenNodesOrNil returns a seenNodes filter if enabled, otherwise nil.
+func seenNodesOrNil(enabled bool) *seenNodes {
+	if !enabled {
+		return nil
+	}
+
+	return newSeenNodes()
+}
+
 // testAndAdd returns true if the address was (probably) already seen, otherwise adds it.
 func (s *seenNodes) testAndAdd(addr netip.AddrPort) bool {
 	var buf [18]byte
@@ -83,7 +92,7 @@ func (c *crawler) runDiscoveredNodes(ctx context.Context) {
 			unknownAddrs := c.kTable.FilterKnownAddrs(addrs)
 			for _, addr := range unknownAddrs {
 				p := m[addr]
-				if c.seenNodes.testAndAdd(p.Addr()) {
+				if c.seenNodes != nil && c.seenNodes.testAndAdd(p.Addr()) {
 					continue
 				}
 
