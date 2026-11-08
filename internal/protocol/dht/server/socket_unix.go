@@ -11,10 +11,12 @@ import (
 )
 
 func newSocket() Socket {
-	fd, sockErr := unix.Socket(unix.SOCK_DGRAM, unix.AF_INET, 0)
+	fd, sockErr := unix.Socket(unix.AF_INET, unix.SOCK_DGRAM, 0)
 	if sockErr != nil {
 		panic(fmt.Errorf("error creating socket: %w", sockErr))
 	}
+
+	setSocketBuffers(fd)
 
 	return &socket{
 		fd: fd,

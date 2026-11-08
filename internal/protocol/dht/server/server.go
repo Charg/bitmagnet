@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -90,25 +91,29 @@ func (s *server) read(ctx context.Context) {
 			continue
 		}
 
-		var msg dht.Msg
+		// decoding is relatively slow (reflection) so it's done off the read loop
+		go s.handleDatagram(ctx, bytes.Clone(buffer[:n]), from)
+	}
+}
 
-		err = bencode.Unmarshal(buffer[:n], &msg)
-		if err != nil {
-			s.logger.Debugw("could not unmarshal packet data", "error", err)
-			continue
-		}
+func (s *server) handleDatagram(ctx context.Context, data []byte, from netip.AddrPort) {
+	var msg dht.Msg
 
-		recvMsg := dht.RecvMsg{
-			Msg:  msg,
-			From: from,
-		}
+	if err := bencode.Unmarshal(data, &msg); err != nil {
+		s.logger.Debugw("could not unmarshal packet data", "error", err)
+		return
+	}
 
-		switch msg.Y {
-		case dht.YQuery:
-			go s.handleQuery(ctx, recvMsg)
-		case dht.YResponse, dht.YError:
-			go s.handleResponse(recvMsg)
-		}
+	recvMsg := dht.RecvMsg{
+		Msg:  msg,
+		From: from,
+	}
+
+	switch msg.Y {
+	case dht.YQuery:
+		s.handleQuery(ctx, recvMsg)
+	case dht.YResponse, dht.YError:
+		s.handleResponse(recvMsg)
 	}
 }
 

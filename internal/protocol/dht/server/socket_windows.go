@@ -15,6 +15,9 @@ type socket struct {
 
 func newSocket() Socket {
 	fd, _ := windows.Socket(windows.AF_INET, windows.SOCK_DGRAM, 0)
+	_ = windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_RCVBUF, socketBufferSize)
+	_ = windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_SNDBUF, socketBufferSize)
+
 	return &socket{fd: fd}
 }
 
