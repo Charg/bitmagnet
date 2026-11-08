@@ -27,8 +27,10 @@ func (k *nodeKeyspace) getCandidatesForSampleInfoHashes(n int) []*node {
 	//nolint:prealloc
 	var candidates []*node
 
+	now := time.Now()
+
 	for _, it := range k.items {
-		if !it.IsSampleInfoHashesCandidate() {
+		if !it.isSampleInfoHashesCandidateAt(now) {
 			continue
 		}
 
@@ -149,7 +151,10 @@ func (n *node) Dropped() bool {
 }
 
 func (n *node) IsSampleInfoHashesCandidate() bool {
-	now := time.Now()
+	return n.isSampleInfoHashesCandidateAt(time.Now())
+}
+
+func (n *node) isSampleInfoHashesCandidateAt(now time.Time) bool {
 	threshold := now.Add(-(5 * time.Second))
 
 	return n.bep51Support != protocolSupportNo &&

@@ -48,7 +48,9 @@ type crawler struct {
 	// containing every hash it has already encountered.
 	// This avoids multiple attempts to crawl the same hash, and takes a lot of load off the database query
 	// that checks if a hash has already been indexed.
-	ignoreHashes    *ignoreHashes
+	ignoreHashes *ignoreHashes
+	// seenNodes is a bloom filter of recently seen node addresses, used to avoid recontacting nodes.
+	seenNodes       *seenNodes
 	blockingManager blocking.Manager
 	// soughtNodeID is a random node ID used as the target for find_node and sample_infohashes requests.
 	// It is rotated every 10 seconds.

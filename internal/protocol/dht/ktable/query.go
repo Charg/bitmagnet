@@ -2,7 +2,7 @@ package ktable
 
 import (
 	"net/netip"
-	"sort"
+	"slices"
 	"time"
 )
 
@@ -29,8 +29,8 @@ type GetOldestPeers struct {
 
 func (c GetOldestPeers) execReturn(t *table) []Node {
 	peers := t.nodes.getLastRespondedBefore(c.Cutoff)
-	sort.Slice(peers, func(i, j int) bool {
-		return peers[i].Time().Before(peers[j].Time())
+	slices.SortFunc(peers, func(a, b Node) int {
+		return a.Time().Compare(b.Time())
 	})
 
 	if c.N > 0 && len(peers) > c.N {

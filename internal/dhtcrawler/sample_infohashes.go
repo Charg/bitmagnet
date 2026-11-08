@@ -2,11 +2,33 @@ package dhtcrawler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht/ktable"
 )
+
+const (
+	sampleInfoHashesErrorBackoff = time.Hour
+	maxSampleInfoHashesInterval  = 6 * 60 * 60
+	earlySampleInfoHashesRequery = 60
+	shortSampleInfoHashesLimit   = 300
+)
+
+// sampleInfoHashesInterval returns the number of seconds to wait before sampling a node again.
+// Nodes such as libtorrent precompute their samples and serve the same ones for the whole advertised interval,
+// so re-querying early is wasted unless the node has many more hashes than it returned
+// and advertises a short interval (meaning it likely rotates its samples quickly).
+// Otherwise the advertised interval is honoured, capped to a sane maximum.
+func sampleInfoHashesInterval(interval, num, numSamples int) int {
+	if interval <= shortSampleInfoHashesLimit && num > 2*numSamples {
+		return min(interval, earlySampleInfoHashesRequery)
+	}
+
+	return min(interval, maxSampleInfoHashesInterval)
+}
 
 func (c *crawler) getNodesForSampleInfoHashes(ctx context.Context) {
 	for {
@@ -32,6 +54,24 @@ func (c *crawler) runSampleInfoHashes(ctx context.Context) {
 
 		res, err := c.client.SampleInfoHashes(ctx, n.Addr(), c.soughtNodeID.Get())
 		if err != nil {
+			var krpcErr dht.Error
+			if errors.As(err, &krpcErr) {
+				// the node responded, so it is alive and still useful for routing.
+				options := []ktable.NodeOption{ktable.NodeResponded()}
+				if krpcErr.Code == dht.ErrorCodeMethodUnknown {
+					// the node doesn't support BEP51, so it will never be sampled again.
+					options = append(options, ktable.NodeBep51Support(false))
+				} else {
+					options = append(options, ktable.NodeSampleInfoHashesRes(
+						0, 0, time.Now().Add(sampleInfoHashesErrorBackoff),
+					))
+				}
+
+				c.kTable.BatchCommand(ktable.PutNode{ID: n.ID(), Addr: n.Addr(), Options: options})
+
+				return
+			}
+
 			c.kTable.BatchCommand(
 				ktable.DropNode{ID: n.ID(), Reason: fmt.Errorf("sample_infohashes failed: %w", err)},
 			)
@@ -59,12 +99,7 @@ func (c *crawler) runSampleInfoHashes(ctx context.Context) {
 			}
 		}
 
-		interval := res.Interval
-		// most nodes request a 6 hour backoff time(!)
-		// if we're still discovering info hashes from them then let's set a respectful interval instead
-		if len(discoveredHashes) > 0 && interval > 300 {
-			interval = 60
-		}
+		interval := sampleInfoHashesInterval(res.Interval, res.Num, len(res.Samples))
 
 		c.kTable.BatchCommand(ktable.PutNode{ID: n.ID(), Addr: n.Addr(), Options: []ktable.NodeOption{
 			ktable.NodeResponded(),
