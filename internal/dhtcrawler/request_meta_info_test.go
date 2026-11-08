@@ -192,7 +192,6 @@ func TestDoRequestMetaInfo(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 		defer cancel()
 
-
 		_, err := c.doRequestMetaInfo(ctx, protocol.ID{}, []netip.AddrPort{testAddr(1), testAddr(2)})
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
