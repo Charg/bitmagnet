@@ -2,12 +2,15 @@ package torznab
 
 import (
 	"strings"
+	"time"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/slice"
 )
 
 type Config struct {
 	Profiles []Profile
+	// SearchTimeout bounds how long a search may run; 0 disables the timeout.
+	SearchTimeout time.Duration
 }
 
 func (c Config) MergeDefaults() Config {
@@ -19,7 +22,9 @@ func (c Config) MergeDefaults() Config {
 }
 
 func NewDefaultConfig() Config {
-	return Config{}
+	return Config{
+		SearchTimeout: time.Minute,
+	}
 }
 
 func (c Config) GetProfile(name string) (Profile, bool) {

@@ -3,6 +3,8 @@ package processor
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
+	"strings"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/database/dao"
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
@@ -78,6 +80,10 @@ func (c processor) persist(ctx context.Context, payload persistPayload) error {
 			if createErr := tx.TorrentContent.WithContext(ctx).Clauses(
 				clause.OnConflict{
 					UpdateAll: true,
+					// skip rewriting rows that haven't changed (the common case when reprocessing),
+					// as every update
+					// writes a new row version and new entries in each of the table's many indexes:
+					Where: clause.Where{Exprs: []clause.Expression{torrentContentChanged}},
 				},
 			).CreateInBatches(torrentContentsPtr, 100); createErr != nil {
 				return createErr
@@ -109,3 +115,44 @@ func (c processor) persist(ctx context.Context, payload persistPayload) error {
 		return nil
 	})
 }
+
+// torrentContentUpsertColumns are the columns rewritten when upserting torrent content
+// (the columns that gorm's UpdateAll assigns, other than updated_at).
+var torrentContentUpsertColumns = []string{
+	"content_type",
+	"content_source",
+	"content_id",
+	"languages",
+	"episodes",
+	"video_resolution",
+	"video_source",
+	"video_codec",
+	"video_3d",
+	"video_modifier",
+	"release_group",
+	"tsv",
+	"seeders",
+	"leechers",
+	"size",
+	"files_count",
+}
+
+// torrentContentChanged is an ON CONFLICT DO UPDATE condition that is true when any upserted column differs from the
+// existing row.
+var torrentContentChanged = func() clause.Expression {
+	existing := make([]string, len(torrentContentUpsertColumns))
+	excluded := make([]string, len(torrentContentUpsertColumns))
+
+	for i, col := range torrentContentUpsertColumns {
+		existing[i] = fmt.Sprintf("%q.%q", model.TableNameTorrentContent, col)
+		excluded[i] = fmt.Sprintf("%q.%q", "excluded", col)
+	}
+
+	return clause.Expr{
+		SQL: fmt.Sprintf(
+			"(%s) IS DISTINCT FROM (%s)",
+			strings.Join(existing, ", "),
+			strings.Join(excluded, ", "),
+		),
+	}
+}()

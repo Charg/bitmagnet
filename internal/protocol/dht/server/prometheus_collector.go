@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 	"time"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/dht"
+	"github.com/bitmagnet-io/bitmagnet/internal/protocol/errreason"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -16,9 +18,19 @@ type prometheusCollector struct {
 	queryConcurrency  *prometheus.GaugeVec
 }
 
-const labelQuery = "query"
+const (
+	labelQuery  = "query"
+	labelReason = "reason"
+)
 
 var labelNames = []string{labelQuery}
+
+// Reasons for a failed query, in addition to those of errreason.
+const (
+	reasonKrpcError       = "krpc_error"
+	reasonSendFailed      = "send_failed"
+	reasonInvalidResponse = "invalid_response"
+)
 
 func newPrometheusCollector() prometheusCollector {
 	return prometheusCollector{
@@ -39,8 +51,8 @@ func newPrometheusCollector() prometheusCollector {
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "query_error_total",
-			Help:      "A counter of failed DHT queries.",
-		}, labelNames),
+			Help:      "A counter of failed DHT queries, by the reason of failure.",
+		}, []string{labelQuery, labelReason}),
 		queryConcurrency: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -80,8 +92,26 @@ func (s prometheusServerWrapper) Query(
 		s.queryDuration.With(labels).Observe(time.Since(start).Seconds())
 		s.querySuccessTotal.With(labels).Inc()
 	} else {
-		s.queryErrorTotal.With(labels).Inc()
+		s.queryErrorTotal.With(prometheus.Labels{labelQuery: q, labelReason: queryErrorReason(err)}).Inc()
 	}
 
 	return res, err
+}
+
+func queryErrorReason(err error) string {
+	var (
+		krpcErr    dht.Error
+		krpcErrPtr *dht.Error
+	)
+
+	switch {
+	case errors.As(err, &krpcErrPtr), errors.As(err, &krpcErr):
+		return reasonKrpcError
+	case errors.Is(err, ErrInvalidResponse):
+		return reasonInvalidResponse
+	case errors.Is(err, ErrSendFailed):
+		return reasonSendFailed
+	default:
+		return errreason.Classify(err)
+	}
 }

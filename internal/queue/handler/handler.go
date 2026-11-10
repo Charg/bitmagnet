@@ -112,7 +112,7 @@ func Exec(ctx context.Context, handler Handler, job model.QueueJob) (err error) 
 		}()
 
 		errCh <- handler.Handle(ctx, job)
-	}(ctx)
+	}(timeoutCtx)
 
 	select {
 	case <-done:

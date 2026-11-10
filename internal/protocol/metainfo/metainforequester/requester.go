@@ -86,9 +86,13 @@ func (r requester) Request(ctx context.Context, infoHash protocol.ID, addr netip
 	timeoutCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 
+	fail := func(stage string, err error) (Response, error) {
+		return Response{}, newStageError(stage, err, timeoutCtx.Err())
+	}
+
 	conn, connErr := r.connect(timeoutCtx, addr)
 	if connErr != nil {
-		return Response{}, connErr
+		return fail(StageDial, connErr)
 	}
 
 	// DialContext stops observing the context once the dial succeeds, so close the socket
@@ -104,26 +108,26 @@ func (r requester) Request(ctx context.Context, infoHash protocol.ID, addr netip
 
 	hsInfo, btHandshakeErr := btHandshake(conn, infoHash, r.clientID)
 	if btHandshakeErr != nil {
-		return Response{}, btHandshakeErr
+		return fail(StageBtHandshake, btHandshakeErr)
 	}
 
 	metadataSize, utMetadata, exHandshakeErr := exHandshake(conn)
 	if exHandshakeErr != nil {
-		return Response{}, exHandshakeErr
+		return fail(StageExtensionHandshake, exHandshakeErr)
 	}
 
 	if requestAllPiecesErr := requestAllPieces(conn, metadataSize, utMetadata); requestAllPiecesErr != nil {
-		return Response{}, requestAllPiecesErr
+		return fail(StageRequestPieces, requestAllPiecesErr)
 	}
 
 	pieces, readAllPiecesErr := readAllPieces(conn, metadataSize)
 	if readAllPiecesErr != nil {
-		return Response{}, readAllPiecesErr
+		return fail(StageReadPieces, readAllPiecesErr)
 	}
 
 	parsed, parseErr := metainfo.ParseMetaInfoBytes(infoHash, pieces)
 	if parseErr != nil {
-		return Response{}, parseErr
+		return fail(StageParse, parseErr)
 	}
 
 	return Response{

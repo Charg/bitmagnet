@@ -26,6 +26,9 @@ func (r requester) Request(
 		SetQueryParams(queryParams).
 		SetResult(&result).
 		Get(path)
+	// transport errors are *url.Error, which include the request URL and therefore the API key:
+	err = redactError(err)
+
 	if err == nil && !res.IsSuccess() {
 		switch res.StatusCode() {
 		case http.StatusUnauthorized:

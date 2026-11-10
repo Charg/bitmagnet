@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/lazy"
 	"github.com/bitmagnet-io/bitmagnet/internal/model"
@@ -21,6 +22,7 @@ import (
 )
 
 var testCfg = torznab.Config{
+	SearchTimeout: time.Minute,
 	Profiles: []torznab.Profile{
 		{
 			ID:           "test",
@@ -203,7 +205,7 @@ func TestSearch(t *testing.T) {
 
 			result := torznab.SearchResult{}
 			h.clientMock.EXPECT().Search(
-				mock.IsType(&gin.Context{}),
+				mock.Anything,
 				testCase.expectedRequest,
 			).Return(result, nil).Times(1)
 
@@ -219,4 +221,44 @@ func TestSearch(t *testing.T) {
 			assert.Equal(t, string(resultXML), h.responseRecorder.Body.String())
 		})
 	}
+}
+
+// TestSearchContext checks that a search runs under the request context (so it is cancelled if the client
+// disconnects) with the configured timeout.
+func TestSearchContext(t *testing.T) {
+	t.Parallel()
+
+	h := newTestHarness(t)
+
+	reqCtx, cancelReq := context.WithCancel(context.Background())
+
+	searched := false
+
+	h.clientMock.EXPECT().Search(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, _ torznab.SearchRequest) (torznab.SearchResult, error) {
+			searched = true
+
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok, "the search should have a deadline")
+			assert.WithinDuration(t, time.Now().Add(testCfg.SearchTimeout), deadline, 5*time.Second)
+
+			require.NoError(t, ctx.Err())
+			cancelReq()
+			assert.ErrorIs(
+				t,
+				ctx.Err(),
+				context.Canceled,
+				"cancelling the request should cancel the search",
+			)
+
+			return torznab.SearchResult{}, nil
+		},
+	).Times(1)
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, "/torznab/?t=search&q=x", nil)
+	require.NoError(t, err)
+
+	h.engine.ServeHTTP(h.responseRecorder, req)
+
+	require.True(t, searched)
 }

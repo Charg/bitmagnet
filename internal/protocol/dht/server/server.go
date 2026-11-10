@@ -15,6 +15,11 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	ErrSendFailed      = errors.New("could not send query")
+	ErrInvalidResponse = errors.New("invalid response")
+)
+
 type Server interface {
 	start() error
 	stop()
@@ -194,7 +199,7 @@ func (s *server) Query(
 	}
 	if sendErr := s.send(addr, msg); sendErr != nil {
 		s.logger.Debugw("could not send query", "msg", msg, "sendErr", sendErr)
-		err = sendErr
+		err = fmt.Errorf("%w: %w", ErrSendFailed, sendErr)
 
 		return
 	}
@@ -207,7 +212,7 @@ func (s *server) Query(
 		return
 	case res, ok := <-ch:
 		if !ok {
-			err = errors.New("channel closed")
+			err = fmt.Errorf("%w: channel closed", ErrInvalidResponse)
 			return
 		}
 
@@ -217,10 +222,10 @@ func (s *server) Query(
 			if res.Msg.E != nil {
 				err = res.Msg.E
 			} else {
-				err = errors.New("error missing from response")
+				err = fmt.Errorf("%w: error missing from response", ErrInvalidResponse)
 			}
 		} else if r.Msg.R == nil {
-			err = errors.New("return data missing from response")
+			err = fmt.Errorf("%w: return data missing from response", ErrInvalidResponse)
 		}
 
 		return

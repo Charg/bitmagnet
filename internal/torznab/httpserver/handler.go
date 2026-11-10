@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -99,7 +100,18 @@ func (h handler) handleSearch(ctx *gin.Context, profile torznab.Profile, tp stri
 		offset.Uint = uint(intOffset)
 	}
 
-	result, searchErr := h.client.Search(ctx, torznab.SearchRequest{
+	// use the request context rather than the gin context, so that the search is cancelled if the client goes away,
+	// and bound it with a timeout so that a pathological search can't hold a database connection indefinitely
+	searchCtx := ctx.Request.Context()
+
+	if h.config.SearchTimeout > 0 {
+		var cancel context.CancelFunc
+
+		searchCtx, cancel = context.WithTimeout(searchCtx, h.config.SearchTimeout)
+		defer cancel()
+	}
+
+	result, searchErr := h.client.Search(searchCtx, torznab.SearchRequest{
 		Profile: profile,
 		Query:   ctx.Query(torznab.ParamQuery),
 		Type:    tp,

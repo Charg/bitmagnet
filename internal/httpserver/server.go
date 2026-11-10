@@ -38,6 +38,10 @@ func New(p Params) Result {
 				OnStart: func(ctx context.Context) error {
 					gin.SetMode(p.Config.GinMode)
 					g := gin.New()
+					// make gin.Context's Done/Err/Deadline follow the request context, so that work
+					// passed a
+					// gin.Context is cancelled when the client disconnects:
+					g.ContextWithFallback = true
 					g.Use(ginzap.Ginzap(p.Logger.Named("gin"), time.RFC3339, true), gin.Recovery())
 					options, optionsErr := resolveOptions(p.Config.Options, p.Options)
 					if optionsErr != nil {

@@ -2,6 +2,7 @@ package dhtcrawler
 
 import (
 	"context"
+	"database/sql/driver"
 	"time"
 
 	"github.com/bitmagnet-io/bitmagnet/internal/database/dao"
@@ -10,7 +11,6 @@ import (
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol"
 	"github.com/bitmagnet-io/bitmagnet/internal/protocol/metainfo"
 	"github.com/prometheus/client_golang/prometheus"
-	"gorm.io/gen"
 	"gorm.io/gorm/clause"
 )
 
@@ -239,35 +239,87 @@ func (c *crawler) runPersistSources(ctx context.Context) {
 				}
 			}
 
-			if persistErr := c.dao.WithContext(ctx).TorrentsTorrentSource.Clauses(
-				clause.OnConflict{
-					Columns: []clause.Column{
-						{Name: string(c.dao.TorrentsTorrentSource.InfoHash.ColumnName())},
-						{Name: string(c.dao.TorrentsTorrentSource.Source.ColumnName())},
-					},
-					DoUpdates: clause.AssignmentColumns([]string{
-						string(c.dao.TorrentsTorrentSource.Seeders.ColumnName()),
-						string(c.dao.TorrentsTorrentSource.Leechers.ColumnName()),
-						// sets to null, fixes torrents indexed before 0.8.0 with published_at
-						// 0001-01-01 00:00:00+00:
-						string(c.dao.TorrentsTorrentSource.PublishedAt.ColumnName()),
-						string(c.dao.TorrentsTorrentSource.UpdatedAt.ColumnName()),
-					}),
-				},
-			).Where(
-				// check that the torrent record hasn't been deleted:
-				gen.Exists(c.dao.WithContext(ctx).Torrent.Where(
-					c.dao.Torrent.InfoHash.EqCol(c.dao.TorrentsTorrentSource.InfoHash),
-				)),
-			).CreateInBatches(srcs, 100); persistErr != nil {
+			persisted, persistErr := c.persistSourcesBatch(ctx, srcs)
+			if persistErr != nil {
 				c.logger.Errorf("error persisting torrent sources: %s", persistErr.Error())
 			} else {
 				c.persistedTotal.With(prometheus.Labels{"entity": "TorrentsTorrentSource"}).
-					Add(float64(len(srcs)))
-				c.logger.Debugw("persisted torrent sources", "count", len(srcs))
+					Add(float64(persisted))
+				c.logger.Debugw("persisted torrent sources", "count", persisted)
 			}
 		}
 	}
+}
+
+// persistSourcesBatch upserts scraped torrent sources, skipping any whose torrent no longer exists
+// (e.g. it was deleted by the classifier after the scrape started); otherwise a single deleted torrent
+// would fail the foreign key check for the whole batch. It returns the number of sources persisted.
+func (c *crawler) persistSourcesBatch(ctx context.Context, srcs []*model.TorrentsTorrentSource) (int, error) {
+	if len(srcs) == 0 {
+		return 0, nil
+	}
+
+	var persisted int
+
+	err := c.dao.Transaction(func(tx *dao.Query) error {
+		infoHashes := make([]driver.Valuer, 0, len(srcs))
+		for _, src := range srcs {
+			infoHashes = append(infoHashes, src.InfoHash)
+		}
+
+		var existing []protocol.ID
+
+		// FOR SHARE stops the torrents being deleted before the insert (gorm doesn't allow the weaker FOR KEY
+		// SHARE):
+		if err := tx.Torrent.WithContext(ctx).
+			Where(tx.Torrent.InfoHash.In(infoHashes...)).
+			Clauses(clause.Locking{Strength: clause.LockingStrengthShare}).
+			Pluck(tx.Torrent.InfoHash, &existing); err != nil {
+			return err
+		}
+
+		existingSet := make(map[protocol.ID]struct{}, len(existing))
+		for _, h := range existing {
+			existingSet[h] = struct{}{}
+		}
+
+		toPersist := make([]*model.TorrentsTorrentSource, 0, len(existing))
+
+		for _, src := range srcs {
+			if _, ok := existingSet[src.InfoHash]; ok {
+				toPersist = append(toPersist, src)
+			}
+		}
+
+		if len(toPersist) == 0 {
+			return nil
+		}
+
+		if err := tx.TorrentsTorrentSource.WithContext(ctx).Clauses(
+			clause.OnConflict{
+				Columns: []clause.Column{
+					{Name: string(tx.TorrentsTorrentSource.InfoHash.ColumnName())},
+					{Name: string(tx.TorrentsTorrentSource.Source.ColumnName())},
+				},
+				DoUpdates: clause.AssignmentColumns([]string{
+					string(tx.TorrentsTorrentSource.Seeders.ColumnName()),
+					string(tx.TorrentsTorrentSource.Leechers.ColumnName()),
+					// sets to null, fixes torrents indexed before 0.8.0 with published_at
+					// 0001-01-01 00:00:00+00:
+					string(tx.TorrentsTorrentSource.PublishedAt.ColumnName()),
+					string(tx.TorrentsTorrentSource.UpdatedAt.ColumnName()),
+				}),
+			},
+		).CreateInBatches(toPersist, 100); err != nil {
+			return err
+		}
+
+		persisted = len(toPersist)
+
+		return nil
+	})
+
+	return persisted, err
 }
 
 func createTorrentSourceModel(

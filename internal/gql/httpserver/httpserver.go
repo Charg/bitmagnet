@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -78,10 +79,35 @@ func newServer(es graphql.ExecutableSchema) *handler.Server {
 
 	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
 
+	srv.AroundOperations(queryTimeout(defaultQueryTimeout))
+
 	srv.Use(extension.Introspection{})
 	srv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](100),
 	})
 
 	return srv
+}
+
+// defaultQueryTimeout bounds how long a GraphQL query (e.g. a torrent content search) may run.
+const defaultQueryTimeout = time.Minute
+
+// queryTimeout applies a timeout to query operations, so that a pathological search can't hold a database
+// connection indefinitely. Mutations and subscriptions are not affected.
+func queryTimeout(timeout time.Duration) graphql.OperationMiddleware {
+	return func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+		if !graphql.HasOperationContext(ctx) || graphql.GetOperationContext(ctx).Operation == nil ||
+			graphql.GetOperationContext(ctx).Operation.Operation != ast.Query {
+			return next(ctx)
+		}
+
+		responseHandler := next(ctx)
+
+		return func(ctx context.Context) *graphql.Response {
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+
+			return responseHandler(ctx)
+		}
+	}
 }
