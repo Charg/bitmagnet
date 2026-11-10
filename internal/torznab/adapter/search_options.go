@@ -161,9 +161,8 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 		options = append(options, query.Where(query.Or(catsCriteria...)))
 	}
 
-	if idCriteria := idCriteria(r); len(idCriteria) > 0 {
-		// any supplied ID matching is sufficient, as not all content has every type of ID
-		options = append(options, query.Where(query.Or(idCriteria...)))
+	if idCriteria, ok := idCriteria(r); ok {
+		options = append(options, query.Where(idCriteria))
 	}
 
 	limit := r.Profile.DefaultLimit
@@ -186,8 +185,9 @@ func searchRequestToQueryOptions(r torznab.SearchRequest) ([]query.Option, error
 	return options, nil
 }
 
-func idCriteria(r torznab.SearchRequest) []query.Criteria {
-	var criteria []query.Criteria
+// idCriteria matches content with any of the supplied IDs, as not all content has every type of ID.
+func idCriteria(r torznab.SearchRequest) (query.Criteria, bool) {
+	var canonical, alternative []model.ContentRef
 
 	// the content type is unrestricted for a generic search
 	var ct model.ContentType
@@ -205,30 +205,34 @@ func idCriteria(r torznab.SearchRequest) []query.Criteria {
 			imdbID = "tt" + imdbID
 		}
 
-		criteria = append(criteria, search.ContentAlternativeIdentifierCriteria(model.ContentRef{
+		alternative = append(alternative, model.ContentRef{
 			Type:   ct,
 			Source: "imdb",
 			ID:     imdbID,
-		}))
+		})
 	}
 
 	if r.TMDBID.Valid {
-		criteria = append(criteria, search.ContentCanonicalIdentifierCriteria(model.ContentRef{
+		canonical = append(canonical, model.ContentRef{
 			Type:   ct,
 			Source: "tmdb",
 			ID:     r.TMDBID.String,
-		}))
+		})
 	}
 
 	if r.TVDBID.Valid {
-		criteria = append(criteria, search.ContentAlternativeIdentifierCriteria(model.ContentRef{
+		alternative = append(alternative, model.ContentRef{
 			Type:   ct,
 			Source: "tvdb",
 			ID:     r.TVDBID.String,
-		}))
+		})
 	}
 
-	return criteria
+	if len(canonical) == 0 && len(alternative) == 0 {
+		return nil, false
+	}
+
+	return search.TorrentContentIdentifierCriteria(canonical, alternative), true
 }
 
 func seedersOrder() []query.OrderByColumn {

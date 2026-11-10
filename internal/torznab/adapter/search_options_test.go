@@ -9,20 +9,28 @@ import (
 )
 
 const (
-	sqlIMDBMovie = `"content_attributes"."content_type" = 'movie' AND ` +
-		`"content_attributes"."content_type" = "content"."type"`
-	sqlIMDBTV = `"content_attributes"."content_type" = 'tv_show' AND ` +
-		`"content_attributes"."content_type" = "content"."type"`
-	sqlIMDBAny = `EXISTS (SELECT * FROM "content_attributes" WHERE ` +
-		`"content_attributes"."content_type" = "content"."type"`
-	sqlTMDBMovie = `"content"."type" = 'movie' AND "content"."source" = 'tmdb' AND "content"."id" = '496243'`
-	sqlTMDBTV    = `"content"."type" = 'tv_show' AND "content"."source" = 'tmdb' AND "content"."id" = '250923'`
-	sqlTMDBAny   = `("content"."source" = 'tmdb' AND "content"."id" = '496243')`
+	sqlIDIn = `("torrent_contents"."content_type", "torrent_contents"."content_source", ` +
+		`"torrent_contents"."content_id") IN (`
+	sqlAttrSelect = `SELECT "content_attributes"."content_type","content_attributes"."content_source",` +
+		`"content_attributes"."content_id" FROM "content_attributes" WHERE `
+	sqlContentSelect = `SELECT "content"."type","content"."source","content"."id" FROM "content" WHERE `
+	sqlIMDBMovie     = sqlAttrSelect + `"content_attributes"."content_type" = 'movie' AND ` +
+		`"content_attributes"."source" = 'imdb' AND "content_attributes"."value" = 'tt6751668'`
+	sqlIMDBTV = sqlAttrSelect + `"content_attributes"."content_type" = 'tv_show' AND ` +
+		`"content_attributes"."source" = 'imdb' AND "content_attributes"."value" = 'tt26933824'`
+	sqlIMDBAny = sqlAttrSelect +
+		`"content_attributes"."source" = 'imdb' AND "content_attributes"."value" = 'tt6751668'`
+	sqlTMDBMovie = sqlContentSelect +
+		`"content"."type" = 'movie' AND "content"."source" = 'tmdb' AND "content"."id" = '496243'`
+	sqlTMDBTV = sqlContentSelect +
+		`"content"."type" = 'tv_show' AND "content"."source" = 'tmdb' AND "content"."id" = '250923'`
+	sqlTMDBAny = sqlContentSelect + `"content"."source" = 'tmdb' AND "content"."id" = '496243'`
+	sqlTVDBTV  = sqlAttrSelect + `"content_attributes"."content_type" = 'tv_show' AND ` +
+		`"content_attributes"."source" = 'tvdb' AND "content_attributes"."value" = '421069'`
 	sqlAnime     = `"content"."original_language" IN ('ja','zh','ko')`
 	sqlAnimation = `"content_collections_content"."content_collection_type" = 'genre' AND ` +
 		`"content_collections_content"."content_collection_source" = 'tmdb' AND ` +
 		`"content_collections_content"."content_collection_id" = '16'`
-	sqlTVDBTV = `"content_attributes"."source" = 'tvdb' AND "content_attributes"."value" = '421069'`
 	// MinSeeders
 	sqlMinSeeders = `("torrent_contents"."seeders" IS NULL OR "torrent_contents"."seeders" >= 5)`
 	// ordering
@@ -48,11 +56,7 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 				IMDBID: model.NewNullString("26933824"),
 				TMDBID: model.NewNullString("250923"),
 			},
-			contains: []string{
-				sqlIMDBTV,
-				`"content_attributes"."source" = 'imdb' AND "content_attributes"."value" = 'tt26933824') OR (` +
-					sqlTMDBTV,
-			},
+			contains: []string{sqlIDIn + sqlTMDBTV + ` UNION ALL ` + sqlIMDBTV + `)`},
 		},
 		{
 			name: "movie search with imdb and tmdb ids matches either id",
@@ -61,10 +65,7 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 				IMDBID: model.NewNullString("tt6751668"),
 				TMDBID: model.NewNullString("496243"),
 			},
-			contains: []string{
-				sqlIMDBMovie,
-				`"content_attributes"."value" = 'tt6751668') OR (` + sqlTMDBMovie,
-			},
+			contains: []string{sqlIDIn + sqlTMDBMovie + ` UNION ALL ` + sqlIMDBMovie + `)`},
 		},
 		{
 			name: "generic search with imdb id does not restrict content type",
@@ -72,7 +73,7 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 				Type:   torznab.FunctionSearch,
 				IMDBID: model.NewNullString("6751668"),
 			},
-			contains:    []string{sqlIMDBAny, `"content_attributes"."value" = 'tt6751668'`},
+			contains:    []string{sqlIDIn + sqlIMDBAny + `)`},
 			notContains: []string{"'movie'", "'tv_show'"},
 		},
 		{
@@ -81,7 +82,7 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 				Type:   torznab.FunctionSearch,
 				TMDBID: model.NewNullString("496243"),
 			},
-			contains:    []string{sqlTMDBAny},
+			contains:    []string{sqlIDIn + sqlTMDBAny + `)`},
 			notContains: []string{"'movie'", "'tv_show'"},
 		},
 		{
@@ -90,7 +91,7 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 				Type:   torznab.FunctionTV,
 				TVDBID: model.NewNullString("421069"),
 			},
-			contains:    []string{sqlIMDBTV, sqlTVDBTV},
+			contains:    []string{sqlIDIn + sqlTVDBTV + `)`},
 			notContains: []string{"'movie'"},
 		},
 		{
@@ -102,8 +103,7 @@ func TestSearchRequestToQueryOptions(t *testing.T) {
 				TVDBID: model.NewNullString("421069"),
 			},
 			contains: []string{
-				`"content_attributes"."value" = 'tt26933824') OR (` + sqlTMDBTV + `) OR EXISTS (`,
-				sqlTVDBTV,
+				sqlIDIn + sqlTMDBTV + ` UNION ALL ` + sqlIMDBTV + ` UNION ALL ` + sqlTVDBTV + `)`,
 			},
 		},
 		{
